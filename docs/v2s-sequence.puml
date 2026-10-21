@@ -1,0 +1,51 @@
+@startuml v2s_sequence
+title V2S - Video to Editable Storyboard
+autonumber
+
+actor User
+participant "Video Importer" as Import
+participant "Shot Detector" as Detect
+participant "Keyframe Extractor" as Extract
+participant "VLM Adapter" as VLM
+participant "Optional MediaPipe" as Pose
+participant "Storyboard Builder" as Builder
+participant "Schema Validator" as Validate
+participant "HTML Viewer" as Viewer
+
+User -> Import : Select video
+Import -> Import : Read metadata
+Import -> Detect : Analyze timeline
+Detect --> Extract : Shot boundaries
+Extract -> Extract : Select representative frames
+Extract -> VLM : Frames + timestamps
+
+opt Person motion analysis requested
+  Extract -> Pose : Frames / sampled video
+  Pose --> Builder : Pose landmarks / motion cues
+end
+
+loop For each shot
+  VLM -> VLM : Describe subjects, action,
+setting, framing and mood
+  VLM --> Builder : Structured shot description
+end
+
+Builder -> Builder : Sort shots by source time
+Builder -> Validate : storyboard.json + asset references
+Validate -> Validate : Check schema, ordering,
+timestamps and missing assets
+
+alt Valid
+  Validate --> Viewer : Load storyboard
+  Viewer --> User : Display editable panels
+else Invalid
+  Validate --> Builder : Validation errors
+  Builder -> Validate : Correct and revalidate
+end
+
+User -> Viewer : Edit captions / reorder panels
+Viewer -> Builder : Save reviewed annotations
+Builder -> Validate : Validate updated storyboard
+Validate --> Viewer : Save valid JSON
+
+@enduml
