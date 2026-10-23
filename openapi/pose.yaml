@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: Video2Storyboard Pose Layer API
+  version: 0.1.0
+  description: Local contract for one-frame MediaPipe Pose estimation and overlay rendering.
+servers:
+  - url: http://127.0.0.1:8787
+    description: Local development only
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Check local Pose worker readiness
+      responses:
+        "200":
+          description: Worker status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: {type: string, enum: [ok]}
+  /v1/pose/estimate:
+    post:
+      operationId: estimatePose
+      summary: Estimate pose and create a visual overlay for one local frame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PoseRequest"
+      responses:
+        "200":
+          description: Pose result and artifact references
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoseResponse"
+        "400":
+          description: Invalid request or unreadable image
+        "500":
+          description: Pose worker failed
+components:
+  schemas:
+    PoseRequest:
+      type: object
+      additionalProperties: false
+      required: [frame_id, image_path, timestamp_ms]
+      properties:
+        frame_id: {type: string, minLength: 1}
+        image_path: {type: string, description: Local filesystem path; source file is read-only}
+        timestamp_ms: {type: integer, minimum: 0}
+        visibility_threshold: {type: number, minimum: 0, maximum: 1, default: 0.35}
+    Landmark:
+      type: object
+      additionalProperties: false
+      required: [index, x, y, z, visibility]
+      properties:
+        index: {type: integer, minimum: 0, maximum: 32}
+        x: {type: number, minimum: 0, maximum: 1}
+        y: {type: number, minimum: 0, maximum: 1}
+        z: {type: number}
+        visibility: {type: number, minimum: 0, maximum: 1}
+    PoseResponse:
+      type: object
+      additionalProperties: false
+      required: [frame_id, timestamp_ms, width, height, status, landmarks, artifacts]
+      properties:
+        frame_id: {type: string}
+        timestamp_ms: {type: integer, minimum: 0}
+        width: {type: integer, minimum: 1}
+        height: {type: integer, minimum: 1}
+        status: {type: string, enum: [detected, no_pose, error]}
+        landmarks:
+          type: array
+          items: {$ref: "#/components/schemas/Landmark"}
+        artifacts:
+          type: object
+          required: [overlay_png, pose_json]
+          properties:
+            overlay_png: {type: string}
+            pose_json: {type: string}
+        error: {type: string}

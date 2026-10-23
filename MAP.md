@@ -1,33 +1,41 @@
 # MAP — video2storyboard
 
-## Responsibility
+## Purpose
+Make a visible MediaPipe Pose layer from local video/frames now; reconstruct dance motion from timestamped pose data next.
 
-`video2storyboard` is the canonical video-to-storyboard engine. LangGraph orchestrates the workflow; plugin modules describe focused capabilities. YAML configures stage order/enabling. Storyboard JSON is canonical data; JSONL is suitable for append-only execution records.
+## Canonical contract chain
+`wf/` defines topology → `aw/` defines agent responsibilities → `openapi/` defines I/O → `contracts/` validates artifacts → `units/` documents isolated units.
 
-## Plugin map
+## Minimal scaffold
+| Path | Responsibility |
+|---|---|
+| `wf/dev.wf.yml` | Small development cycle, roles, quality gates |
+| `wf/pose.wf.yml` | Pose pipeline nodes, edges, input/output |
+| `aw/pose.aw.yaml` | Agent tasks and separation of duties |
+| `openapi/pose.yaml` | Pose request/response API contract |
+| `contracts/pose-artifact.schema.json` | Saved Pose JSON schema |
+| `units/pose/README.md` | Unit acceptance and reuse notes |
+| `src/video2storyboard/pose_video.py` | Existing video overlay implementation to reuse |
+| `src/video2storyboard/pose_render.py` | Existing frame PNG/SVG renderer to reuse |
+| `tests/` | Regression and contract tests |
+| `artifacts/pose/` | Local generated output; normally not committed |
+| `docs/PLAN-TOMORROW.md` | Dance reconstruction handover |
+| `dev.wf.yml` | Compatibility pointer to `wf/dev.wf.yml` |
 
-| Order | Plugin ID | Responsibility | Typical outputs |
-|---:|---|---|---|
-| 1 | `ingest` | Validate source and read metadata | `video_metadata` |
-| 2 | `scene_detection` | Detect scene boundaries | `scenes` |
-| 3 | `keyframes` | Sample and persist frames | `frames` |
-| 4 | `pose` | MediaPipe landmarks and overlays | `pose_results`, `pose_overlays` |
-| 5 | `composition` | OpenCV visual measurements | `composition_metrics` |
-| 6 | `vision` | VLM scene interpretation | `visual_descriptions` |
-| 7 | `speech` | Audio transcription | `transcript` |
-| 8 | `storyboard` | Build canonical storyboard JSON | `storyboard_json` |
-| 9 | `export` | HTML/SVG/media output | `exported_artifacts` |
-| 10 | `validation` | Validate schemas and artifacts | `validation_report` |
+## Topology
+```text
+read_frame -> estimate_pose -> render_overlay -> validate_artifact
+```
+Each node has one responsibility. This milestone excludes VLM, STT/audio, and 3D retargeting.
 
-## Structure
+## Today’s pass condition
+A real local input must produce a visible skeleton overlay PNG, landmark JSON with explicit `detected`/`no_pose`/`error` status, a JSONL run record, and passing focused tests/artifact checks. Scaffold alone is not a pass.
 
-- `src/video2storyboard/plugins/contract.py`: shared context/result/spec contract.
-- `src/video2storyboard/plugins/registry.py`: deterministic plugin registry.
-- `src/video2storyboard/plugins/*.py`: one focused plugin definition per module.
-- `config/plugin-pipeline.yaml`: starter stage configuration.
-- `docs/adr/0002-rainbow-mediapipe-pose-overlay.md`: pose overlay decision record.
-- `tests/test_plugin_registry.py`: registry and contract smoke tests.
+## Tomorrow
+Use timestamped Pose data to render a synchronized 2D stick-figure animation, then compare it side-by-side with source frames before considering 3D.
 
-## Current status
+## Migration status
+This commit adds simpler canonical entry points without deleting legacy graph/plugin code. Migrate legacy modules only when a tested replacement exists.
 
-This is scaffolding only. Plugin modules return `not_implemented` until connected to the existing implementations. The existing LangGraph graph remains the workflow orchestrator; do not replace it with a second orchestration system.
+## Safety and reuse
+Source media remains local and immutable. Prefer existing implementations/dependencies, never upload source media by default, and store generated outputs under `artifacts/`. Read CLI `--help` before running; audio preservation requires FFmpeg, so prefer silent rendering for the minimal Pose-layer milestone.
