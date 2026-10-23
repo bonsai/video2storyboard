@@ -1,0 +1,61 @@
+%% Issue dependency graph for bonsai/video2storyboard
+%% Generated from 2026-10-23 GitHub issues (state: open, 40 fetched)
+%% Render: mermaid.live / GitHub readme.md
+%% Direction LR reads top-to-bottom by priority.
+
+flowchart TD
+    %% ---- P0 Today ----
+    subgraph P0 ["🔥 P0 — Today (current sprint)"]
+        direction TB
+        I19["(#19) <b>Make MediaPipe Pose overlay visible</b><br/>reuse pose_video.py + pose_render.py → overlay PNG/SVG/JSONL"]
+        I21["(#21) <b>Semantic Cube dance-similarity viz</b><br/>inspect Japanese-Designers-Graph → 3D/2D similarity map"]
+    end
+
+    %% ---- P1 Next ----
+    subgraph P1 ["⬆️ P1 — Next"]
+        direction TB
+        I15["(#15) <b>Build two standalone dance pipelines</b><br/>P1: video→PNG→Pose→SVG→composite→MP4<br/>P2: dance JSON→3D char retarget"]
+        I18["(#18) <b>YAML-first topology / separated workers</b><br/>enforce invariant request_normalize→…→publish_report"]
+        I06["(#06) <b>Run complete pipeline locally → Colab handoff</b><br/>Phase A: synthetic vid + LM Studio + end-to-end graph<br/>Phase C: job.json + artifacts.json manifest"]
+        I17["(#17) <b>LangGraph-driven development workflow</b><br/>load+validate dev.wf.yml → survey → human-approve plan → repair loop"]
+    end
+
+    subgraph P2 ["⬇️ P2 — Follow / infrastructure"]
+        direction TB
+        I12["(#12) <b>MCP-first Python plugin services</b><br/>OpenAPI contracts + dashboard (+LangGraph orchestration)"]
+        I02["(#02) <b>Expose pipeline as OpenCode MCP server</b><br/>mcp_server.py: check_local / analyze / get_run"]
+        I01["(#01) <b>Implement LangGraph video-to-storyboard workers</b><br/>Kaggle/Colab workbench"]
+        I13["(#13) <b>Python library (pylib) survey</b>"]
+        I14["(#14) <b>Adopt survey-first policy</b><br/>reuse before implementing plugins"]
+        I16["(#16) <b>PoC: PNG → MediaPipe Pose JSON → SVG overlay in browser</b>"]
+    end
+
+    %% ---- cross-cutting foundations ----
+    I_handover["HANDOVER.md 2026-10-23<br/>(LM Studio local VLM + OpenCode MCP)"]
+    I_docs["#4 / #3 documentation (handovers)"]
+
+    %% ---- dependencies ----
+    I19 --> I15
+    I18 --> I21
+    I18 --> I19
+    I15 -->|"feed dance JSON"| I21
+    I15 --> I06
+    I15 --> I17
+    I18 --> I17
+    I12 --> I02
+    I12 --> I01
+    I13 --> I14
+    I14 --> I15
+    I16 --> I19
+    I19 --> I02
+    I01 --> I12
+    I_handover --> I02
+    I_docs --> I_handover
+
+    classDef P0 fill:#d97461,color:#fff,stroke:#c4523b,stroke-width:2px
+    classDef P1 fill:#efa65f,color:#fff,stroke:#dd8f30,stroke-width:1.5px
+    classDef P2 fill:#7aa5d3,color:#fff,stroke:#4f7fb9,stroke-width:1px
+    class I19,I21 P0
+    class I15,I18,I06,I17 P1
+    class I12,I02,I01,I13,I14,I16 P2
+    class I_handover,I_docs fill:#aaa,color:#000,stroke:#666,stroke-width:1px

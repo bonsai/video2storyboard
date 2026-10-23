@@ -21,6 +21,17 @@ def _error(state: VideoState, worker: str, message: str) -> list[dict[str, Any]]
     return [{"worker": worker, "message": message}]
 
 
+def _events_path(state: VideoState) -> Path:
+    return Path(state.get("output_dir", "outputs")) / state.get("run_id", "run") / "events.jsonl"
+
+
+def append_event(state: VideoState, event: dict[str, Any]) -> None:
+    """Append a structured worker event for the current run."""
+    path = _events_path(state)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
 def ingest_video(state: VideoState) -> VideoState:
     path = Path(state.get("source_video", "")).expanduser()
     if not path.is_file():
@@ -103,17 +114,29 @@ def eye_pose_mp(state: VideoState) -> VideoState:
                                   "x": float(p.x), "y": float(p.y), "z": float(p.z),
                                   "visibility": float(p.visibility)}
                                  for i, p in enumerate(result.pose_landmarks.landmark)]
+                status = "detected" if landmarks else "not_detected"
                 record = {"frame_id": frame["frame_id"], "timestamp_seconds": frame["timestamp_seconds"],
-                          "status": "detected" if landmarks else "not_detected", "landmarks": landmarks}
+                          "status": status, "landmarks": landmarks, "image_width": frame.get("width"),
+                          "image_height": frame.get("height")}
+                append_event(state, {"worker": "eye_pose_mp", "event": "pose_result", "frame_id": frame["frame_id"], "status": status})
+                if not landmarks:
+                    append_event(state, {"worker": "eye_pose_mp", "event": "pose_not_detected", "frame_id": frame["frame_id"]})
+                    results.append(record)
+                    continue
                 if landmarks:
                     try:
                         from ..pose_render import render_pose_artifacts
                         overlay_dir = Path(state.get("output_dir", "outputs")) / state.get("run_id", "run") / "pose-overlays"
                         record.update(render_pose_artifacts(image, landmarks, pose_api.POSE_CONNECTIONS,
                                                             overlay_dir, frame["frame_id"]))
+                        status = "overlay_written"
                     except Exception as render_exc:
                         # Keep successful landmarks even if visual export fails.
                         record["overlay_error"] = str(render_exc)
+                        status = "overlay_error"
+                    append_event(state, {"worker": "eye_pose_mp", "event": "pose_overlay", "frame_id": frame["frame_id"], "status": status})
+                if status == "error":
+                    record["status"] = "error"
                 results.append(record)
         return {"pose_results": results}
     except Exception as exc:
