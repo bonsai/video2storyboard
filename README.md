@@ -47,6 +47,45 @@ For Colab, clone this repository, install `requirements.txt`, mount Drive, and p
 
 ---
 
+## Python worker microservices
+
+The graph's worker functions can also be deployed as isolated HTTP services using FastAPI. Each container exposes `GET /health` and `POST /run`; request bodies contain the graph state under `state`. Worker responses are returned under `result`. This is a worker-service layer, not yet a distributed workflow scheduler: callers or a future gateway are responsible for ordering calls and passing state between them.
+
+| Service | Port | Worker |
+|---|---:|---|
+| ingest | 8001 | `ingest_video` |
+| frames | 8002 | `video2png` |
+| pose | 8003 | `eye_pose_mp` |
+| composition | 8004 | `eye_composition_cv2` |
+| meaning | 8005 | `eye_meaning_vlm` |
+| stt | 8006 | `ear_stt_whisper` |
+| storyboard | 8007 | `hand_storyboard_builder` |
+| render | 8008 | `paper_html_svg` |
+| validate | 8009 | `validate_storyboard` |
+
+### Start the services
+
+1. Install Docker Desktop and start local LM Studio if you want VLM analysis.
+2. Put test videos under `./input/`; generated artifacts go under `./outputs/`.
+3. Set `VIDEO2STORYBOARD_VLM_MODEL` to a vision-capable model ID from LM Studio.
+4. Run:
+
+```powershell
+docker compose up --build -d
+Invoke-RestMethod http://localhost:8001/health
+```
+
+Example worker call (input paths must be visible inside the containers, e.g. `/workspace/input/demo.mp4`):
+
+```powershell
+$body = @{ state = @{ source_video = "/workspace/input/demo.mp4"; output_dir = "/workspace/outputs"; config = @{ frame_interval_seconds = 1.0 } } } | ConvertTo-Json -Depth 8
+Invoke-RestMethod -Method Post -Uri http://localhost:8001/run -ContentType "application/json" -Body $body
+```
+
+Use the relevant port for each worker. All services share the same mounted output directory so generated frame paths can be passed between calls. The VLM worker uses only the configured local LM Studio endpoint; no cloud fallback is provided. Do not expose these ports to an untrusted network without authentication and network controls.
+
+Stop services with `docker compose down`. Run API tests with `PYTHONPATH=src python -m pytest -q`.
+
 ## 目的
 
 - 動画を読み込み、シーン／ショットの境界を検出する
