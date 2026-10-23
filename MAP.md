@@ -34,6 +34,15 @@ A real local input must produce a visible skeleton overlay PNG, landmark JSON wi
 ## Tomorrow
 Use timestamped Pose data to render a synchronized 2D stick-figure animation, then compare it side-by-side with source frames before considering 3D.
 
+## Stick-figure playback diagrams
+Both diagram formats are maintained side by side:
+- Structure (SVG): [animate-stick-figure-structure.svg](docs/diagrams/animate-stick-figure-structure.svg)
+- Structure (PlantUML): [animate-stick-figure-structure.puml](docs/diagrams/animate-stick-figure-structure.puml)
+- Event flow (SVG): [animate-stick-figure-events.svg](docs/diagrams/animate-stick-figure-events.svg)
+- Event flow (PlantUML): [animate-stick-figure-events.puml](docs/diagrams/animate-stick-figure-events.puml)
+
+The SVG files are directly viewable in GitHub; the PUML files are editable source diagrams. Keep each pair conceptually aligned when changing the script.
+
 ## Migration status
 This commit adds simpler canonical entry points without deleting legacy graph/plugin code. Migrate legacy modules only when a tested replacement exists.
 
