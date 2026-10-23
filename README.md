@@ -26,7 +26,23 @@ flowchart TD
 
 - **Workbench:** Kaggle datasets can provide reusable source videos. Google Colab is the interactive runtime; Google Drive is an optional persistent input/output location. Paths are supplied by the caller, not hard-coded.
 - **video2png:** extracts sampled PNG frames and records frame IDs, timestamps, dimensions and aspect ratio.
-- **Eye / pose:** Python MediaPipe Pose produces timestamp-linked landmarks. A missing detection is recorded as missing, never as a zero pose.
+- **Eye / pose:** Python MediaPipe Pose produces timestamp-linked landmarks. A missing detection is recorded as missing, never as a zero pose. Detected frames also get a PNG preview with the skeleton drawn over the source frame and a transparent SVG skeleton in `<output_dir>/<run_id>/pose-overlays/`; paths are included in each `pose_results` record. Overlay export failures are reported per record without discarding landmarks.
+
+### Pose overlay outputs and live preview
+
+The normal LangGraph run exports pose overlays for each sampled frame where MediaPipe detects a pose:
+
+- `outputs/<run_id>/pose-overlays/f000000-pose-overlay.png` — source frame with skeleton drawn on top.
+- `outputs/<run_id>/pose-overlays/f000000-pose-overlay.svg` — transparent SVG skeleton at the source frame's width and height.
+- `storyboard.json` records `overlay_png` and `overlay_svg` paths under the corresponding panel's `visual.pose` object. Frames without a detection have `status: "not_detected"` and no overlay files.
+
+For an optional local webcam preview (press **q** or **Esc** to quit):
+
+```bash
+PYTHONPATH=src python -m video2storyboard.pose_render --camera 0
+```
+
+Use `--no-mirror` to disable mirror display or `--camera 1` to select another camera. The preview requires a local desktop session and GUI-enabled `opencv-python`; it is not suitable for a headless server. Video analysis and overlay generation remain local and do not upload frames.
 - **Eye / composition:** OpenCV (`cv2`) measures dimensions, aspect ratio, luminance and edge density. Semantic background/context is not fabricated by CV measurements; the VLM adapter supplies interpretation.
 - **Eye / meaning:** `eye_meaning_vlm` accepts a provider adapter via `config["vlm_callable"]`. Configure this adapter for your selected VLM provider before expecting semantic descriptions.
 - **Ear / STT:** FFmpeg extracts audio and `faster-whisper` emits timestamped transcript segments.
