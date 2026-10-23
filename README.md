@@ -26,7 +26,7 @@ flowchart TD
 
 - **Workbench:** Kaggle datasets can provide reusable source videos. Google Colab is the interactive runtime; Google Drive is an optional persistent input/output location. Paths are supplied by the caller, not hard-coded.
 - **video2png:** extracts sampled PNG frames and records frame IDs, timestamps, dimensions and aspect ratio.
-- **Eye / pose:** Python MediaPipe Pose produces timestamp-linked landmarks. A missing detection is recorded as missing, never as a zero pose. Detected frames also get a PNG preview with the skeleton drawn over the source frame and a transparent SVG skeleton in `<output_dir>/<run_id>/pose-overlays/`; paths are included in each `pose_results` record. Overlay export failures are reported per record without discarding landmarks.
+- **Eye / pose:** MediaPipe Tasks `PoseLandmarker` produces timestamp-linked landmarks. The Lite `.task` model is cached outside the repository at `~/.cache/video2storyboard/models/` on first use; set `VIDEO2STORYBOARD_POSE_MODEL` to use a pre-downloaded model. A missing detection is recorded as missing, never as a zero pose. Detected frames also get a PNG preview with the skeleton drawn over the source frame and a transparent SVG skeleton in `<output_dir>/<run_id>/pose-overlays/`; paths are included in each `pose_results` record. Overlay export failures are reported per record without discarding landmarks.
 
 ### Pose overlay outputs and live preview
 
@@ -280,6 +280,6 @@ If your OpenCode version uses a different configuration location, merge only the
 - The MCP server calls only the configured local LM Studio endpoint. It has no cloud VLM fallback and does not upload source video, frames, audio, or storyboards to cloud services.
 - Only pass video paths you intend the local process to read. Generated artifacts remain on the selected local output path.
 - FFmpeg must be installed separately and available on `PATH`.
-- Whisper, MediaPipe, and OpenCV can fail independently; errors are returned in the run result.
+- Whisper, MediaPipe Tasks, and OpenCV can fail independently; errors are returned in the run result. The first Pose run needs network access to download the official Lite `.task` model unless `VIDEO2STORYBOARD_POSE_MODEL` points to a local model file.
 - MCP integration and tests have been added, but do not treat them as locally verified until `python -m pytest -q` passes on your machine. A model appearing in `/v1/models` does not by itself prove vision support.
 
