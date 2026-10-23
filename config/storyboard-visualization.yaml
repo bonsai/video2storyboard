@@ -1,0 +1,140 @@
+schema_version: "1.0"
+
+project:
+  id: storyboard_visual_reconstruction
+  status: specification
+  goal: "Reconstruct the visual content of storyboard panels from source frames."
+  canonical_definition: "config/storyboard-visualization.yaml"
+  requirement: "Every development change must include an inspectable visualization and a shareable artifact or explicit reason it cannot be shared."
+
+scope:
+  focus: storyboard_image_reconstruction
+  include:
+    - "Reconstruct storyboard panel imagery from source frames and structured observations."
+    - "Visualize source frame, detected pose, CV2 measurements, VLM description, and reconstructed panel together for review."
+    - "Share generated visual artifacts through repository-tracked files and a human-readable MAP."
+  exclude:
+    - audio_and_speech_transcription
+    - full_video_understanding_beyond_panel_reconstruction
+    - 3d_character_retargeting
+    - mp4_assembly_until_panel_reconstruction_is_verified
+    - unrelated_plugin_expansion
+
+workers:
+  allowed:
+    - id: mp_pose
+      alias: MP
+      responsibility: "Extract human pose landmarks from PNG frames."
+      input: "PNG frame + source timestamp + frame ID"
+      output: "Versioned JSON landmarks with visibility and explicit no-pose/error status"
+      implementation: "Reuse MediaPipe Pose; local execution"
+    - id: cv2
+      responsibility: "Measure image/frame geometry and support image processing for panel reconstruction."
+      input: "PNG frame"
+      output: "JSON measurements and/or derived image artifacts"
+      implementation: "Reuse OpenCV; local execution"
+    - id: vlm
+      responsibility: "Describe visible semantic content needed to reconstruct the storyboard panel."
+      input: "Source frame and selected structured observations"
+      output: "Structured JSON description with evidence/status"
+      implementation: "Provider-neutral adapter; local-first; no silent cloud fallback"
+  prohibited_workers:
+    - stt
+    - audio_analysis
+    - unrelated_semantic_workers
+    - 3d_retargeting
+
+workflow:
+  orchestration:
+    engine: langgraph
+    development_itself_is_orchestrated: true
+    manual_llm_step_by_step_direction: false
+    yaml_is_source_of_truth: true
+  stages:
+    - id: inspect
+      purpose: "Inspect repository, current code, existing artifacts, and related Issues before changes."
+    - id: survey
+      purpose: "Survey existing libraries/projects before implementing custom code."
+      required: true
+    - id: define_contracts
+      purpose: "Define inputs, outputs, schema, visual evidence, and acceptance checks in YAML."
+    - id: implement_small_unit
+      purpose: "Implement one independently testable stage."
+    - id: test
+      purpose: "Run targeted tests and validate generated data and images."
+    - id: visualize
+      purpose: "Generate diagrams/previews from actual code and current run artifacts."
+      required: true
+    - id: share
+      purpose: "Save shareable .puml/.svg/.png/html and MAP.md artifacts in the repository."
+      required: true
+    - id: review
+      purpose: "Report artifact links, test evidence, failures, and unresolved risks."
+  retry:
+    max_attempts: 2
+    on_failure: "capture_error_then_diagnose_then_retry_or_stop"
+  approval:
+    require_human_for:
+      - destructive_changes
+      - credential_or_permission_changes
+      - publishing_outside_repository
+      - merge_or_release
+
+source:
+  timeline_file: "timelines.yaml"
+  segment_id: skeleton_dance
+  interval:
+    start: "00:02:20"
+    end: "00:03:45"
+    start_inclusive: true
+    end_inclusive: false
+  preserve_source_timestamps: true
+  local_only: true
+  cloud_fallback: false
+  upload_source_media: false
+
+contracts:
+  interchange: json
+  event_log: jsonl
+  schemas:
+    pose: "schemas/pose.schema.json"
+    storyboard: "schemas/storyboard.schema.json"
+  requirements:
+    - stable_frame_id_and_source_timestamp
+    - source_dimensions_and_coordinate_convention
+    - explicit_detected_not_detected_and_error_states
+    - separate_image_coordinates_from_3d_world_coordinates
+    - reconstructed_panel_references_source_frame_and_evidence
+
+visualization:
+  mandatory_for_development: true
+  generated_from:
+    - actual_python_code
+    - actual_langgraph_topology
+    - actual_plugin_contracts
+    - actual_run_artifacts
+  artifacts:
+    - path: "artifacts/uml/langgraph.puml"
+      purpose: "Class/data structure view where py2puml supports it."
+    - path: "artifacts/uml/langgraph-flow.puml"
+      purpose: "Actual LangGraph node and edge topology."
+    - path: "artifacts/uml/plugin-workers.puml"
+      purpose: "MP, CV2, and VLM plugin contract/callable mapping."
+    - path: "artifacts/visualization/storyboard-review.html"
+      purpose: "Review source frames, observations, and reconstructed storyboard panels."
+    - path: "artifacts/visualization/MAP.md"
+      purpose: "Human-readable navigation and regeneration instructions."
+  policy:
+    - "Generated diagrams must not be presented as py2puml output if created by another method."
+    - "Do not infer unsupported function-level relationships from class diagrams."
+    - "Share links to repository artifacts in the completion report."
+    - "A missing artifact must be marked blocked, never silently omitted."
+
+acceptance:
+  - "Only MP, CV2, and VLM workers are in the active visual reconstruction path."
+  - "The selected interval includes 00:02:20 and excludes 00:03:45."
+  - "Each processing stage has a defined YAML contract and independently testable input/output."
+  - "The reconstructed storyboard image can be reviewed alongside its source frame and evidence."
+  - "Code/graph/worker structure diagrams and a human-readable MAP are generated and shared."
+  - "Tests and artifact validation run before reporting completion."
+  - "No source media is uploaded by default."
