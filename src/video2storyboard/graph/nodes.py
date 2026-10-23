@@ -17,7 +17,8 @@ from .state import VideoState
 
 
 def _error(state: VideoState, worker: str, message: str) -> list[dict[str, Any]]:
-    return [*state.get("errors", []), {"worker": worker, "message": message}]
+    # The state reducer appends this worker-local error to concurrent worker errors.
+    return [{"worker": worker, "message": message}]
 
 
 def ingest_video(state: VideoState) -> VideoState:
