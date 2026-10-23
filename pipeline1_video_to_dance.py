@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Tuple
 
 from src.video2storyboard.graph.nodes import ingest_video, video2png, eye_pose_mp
 from src.video2storyboard.pose_render import render_pose_artifacts
-from src.video2storyboard.pose_tasks import get_tasks_pose
+from src.video2storyboard.pose_tasks import get_tasks_pose, get_pose_connections
 
 # Use the pose_tasks module for MediaPipe Pose
 # We'll implement the pose detection using the new API
@@ -163,7 +163,7 @@ def main():
                 overlay_dir.mkdir(exist_ok=True)
                 overlay_result = render_pose_artifacts(
                     image, landmarks,
-                    [(c.start, c.end) for c in pose_api._POSE_CONNECTIONS],
+                    list(get_pose_connections()),
                     overlay_dir, frame["frame_id"]
                 )
                 frame_result["overlay_png"] = overlay_result["overlay_png"]
