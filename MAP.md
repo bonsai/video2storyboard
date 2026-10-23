@@ -1,15 +1,16 @@
 # MAP — video2storyboard
 
 ## Purpose
-Make a visible MediaPipe Pose layer from local video/frames now; reconstruct dance motion from timestamped pose data in the next milestone.
+Make a visible MediaPipe Pose layer from local video/frames now; reconstruct dance motion from timestamped pose data next.
 
 ## Canonical contract chain
-`wf/` defines topology → `aw/` defines agent responsibilities → `openapi/` defines I/O → `contracts/` validates saved artifacts → `units/` documents isolated units.
+`wf/` defines topology → `aw/` defines agent responsibilities → `openapi/` defines I/O → `contracts/` validates artifacts → `units/` documents isolated units.
 
 ## Minimal scaffold
 | Path | Responsibility |
 |---|---|
-| `wf/pose.wf.yml` | Nodes, edges, gates, outputs |
+| `wf/dev.wf.yml` | Small development cycle, roles, quality gates |
+| `wf/pose.wf.yml` | Pose pipeline nodes, edges, input/output |
 | `aw/pose.aw.yaml` | Agent tasks and separation of duties |
 | `openapi/pose.yaml` | Pose request/response API contract |
 | `contracts/pose-artifact.schema.json` | Saved Pose JSON schema |
@@ -19,6 +20,7 @@ Make a visible MediaPipe Pose layer from local video/frames now; reconstruct dan
 | `tests/` | Regression and contract tests |
 | `artifacts/pose/` | Local generated output; normally not committed |
 | `docs/PLAN-TOMORROW.md` | Dance reconstruction handover |
+| `dev.wf.yml` | Compatibility pointer to `wf/dev.wf.yml` |
 
 ## Topology
 ```text
@@ -33,7 +35,7 @@ A real local input must produce a visible skeleton overlay PNG, landmark JSON wi
 Use timestamped Pose data to render a synchronized 2D stick-figure animation, then compare it side-by-side with source frames before considering 3D.
 
 ## Migration status
-This commit adds the simpler canonical entry points without deleting legacy graph/plugin code. Migrate legacy modules only when a tested replacement exists.
+This commit adds simpler canonical entry points without deleting legacy graph/plugin code. Migrate legacy modules only when a tested replacement exists.
 
 ## Safety and reuse
-Source media remains local and immutable. Prefer existing implementations/dependencies, never upload source media by default, and store generated outputs under `artifacts/`. Read CLI `--help` before running; audio preservation requires FFmpeg, so prefer silent rendering for the minimal pose-layer milestone.
+Source media remains local and immutable. Prefer existing implementations/dependencies, never upload source media by default, and store generated outputs under `artifacts/`. Read CLI `--help` before running; audio preservation requires FFmpeg, so prefer silent rendering for the minimal Pose-layer milestone.
