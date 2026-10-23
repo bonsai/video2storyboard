@@ -4,3 +4,4 @@ mediapipe>=0.10.14
 faster-whisper>=1.0.0
 jsonschema>=4.22
 pytest>=8.0
+mcp>=1.2.0
