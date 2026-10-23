@@ -1,4 +1,4 @@
-from video2storyboard.pose_video import rainbow_bgr
+from video2storyboard.work.pose.pose_video import rainbow_bgr
 
 
 def test_rainbow_bgr_returns_valid_channels():

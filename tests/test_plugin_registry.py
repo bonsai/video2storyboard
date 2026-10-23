@@ -1,6 +1,6 @@
-from video2storyboard.plugins import get_plugin, list_plugins
-from video2storyboard.plugins.contract import PluginContext
-from video2storyboard.plugins import ingest
+from video2storyboard.work.storyboard.plugins import get_plugin, list_plugins
+from video2storyboard.work.storyboard.plugins.contract import PluginContext
+from video2storyboard.work.storyboard.plugins import ingest
 
 
 def test_registry_has_ten_unique_plugins():

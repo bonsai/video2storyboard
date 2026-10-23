@@ -12,12 +12,12 @@ sys.path.insert(0, "src")
 
 import pytest
 from pathlib import Path
-from video2storyboard.dsl_ast.dsl_parser import parse_dsl
-from video2storyboard.dance_ir import DanceIR
+from video2storyboard.work.dance.dsl import parse_dsl
+from video2storyboard.work.dance.ir import DanceIR
 
 # Test DSL parsing and validation
 def test_dsl_parse_valid():
-    dsl_path = Path("src/video2storyboard/dsl/dance-retarget.yaml")
+    dsl_path = Path("src/video2storyboard/work/dance/dsl/dance-retarget.yaml")
     ast = parse_dsl(dsl_path)
 
     assert ast.dsl_version == "1.0"
@@ -50,7 +50,7 @@ def test_dsl_invalid_interval():
 
 
 def test_dsl_ast_to_ir():
-    ast = parse_dsl("src/video2storyboard/dsl/dance-retarget.yaml")
+    ast = parse_dsl("src/video2storyboard/work/dance/dsl/dance-retarget.yaml")
     ir = DanceIR(source_video="test.mp4", interval={
         "start_seconds": ast.interval.start_seconds,
         "end_seconds": ast.interval.end_seconds,
@@ -92,7 +92,7 @@ rig:
 
 def test_dsl_environment_variable_placeholder():
     # Test that model path placeholder ${VIDEO2STORYBOARD_POSE_MODEL} is preserved
-    ast = parse_dsl("src/video2storyboard/dsl/dance-retarget.yaml")
+    ast = parse_dsl("src/video2storyboard/work/dance/dsl/dance-retarget.yaml")
     # The pose config should contain the placeholder
     pose_config = ast.pose
     # It's a dict in the DSL but may be empty if not parsed properly

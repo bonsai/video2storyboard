@@ -3,7 +3,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from video2storyboard.pose_render import render_pose_artifacts
+from video2storyboard.work.pose.pose_render import render_pose_artifacts
 
 
 def test_render_pose_artifacts_writes_png_and_transparent_svg(tmp_path: Path):

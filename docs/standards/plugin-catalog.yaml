@@ -1,0 +1,147 @@
+schema_version: "1.0"
+status: draft
+scope: video2storyboard
+target_plugin_count: 16
+orchestrator: langgraph
+configuration: yaml
+canonical_storyboard_format: json
+execution_record_format: jsonl
+
+design_rules:
+  one_plugin_one_responsibility: true
+  contract_first: true
+  optional_dependencies: true
+  replaceable_providers: true
+  preserve_source_media: true
+  source_timeline_timestamps: true
+  human_review_supported: true
+  reuse_existing_implementations_first: true
+  docker_required: false
+  local_python_execution: true
+  mcp_tool_interface: true
+  openapi_for_http_services: true
+  dashboard_from_runtime_events: true
+
+domains:
+  - id: input_video_analysis
+    title: Input and video analysis
+    plugins:
+      - id: ingest
+        responsibility: Validate source media and collect metadata.
+        inputs: [source_video]
+        outputs: [video_metadata]
+      - id: scene_detection
+        responsibility: Detect scene boundaries on the source timeline.
+        inputs: [source_video, video_metadata]
+        outputs: [scenes]
+      - id: keyframes
+        responsibility: Sample and persist representative frames.
+        inputs: [source_video, scenes]
+        outputs: [frames]
+      - id: audio_analysis
+        responsibility: Extract audio and calculate timestamped audio features.
+        inputs: [source_video]
+        outputs: [audio_features, audio_artifact]
+
+  - id: ai_visual_understanding
+    title: AI and visual understanding
+    plugins:
+      - id: pose
+        responsibility: Estimate body landmarks and optionally render pose overlays.
+        inputs: [frames]
+        outputs: [pose_results, pose_artifacts]
+        optional_dependencies: [mediapipe, opencv]
+      - id: composition
+        responsibility: Measure framing, geometry, and visual composition.
+        inputs: [frames]
+        outputs: [composition_metrics]
+        optional_dependencies: [opencv]
+      - id: vision
+        responsibility: Interpret frames or scenes with a configured vision-language model.
+        inputs: [frames, scenes]
+        outputs: [visual_descriptions]
+        optional: true
+      - id: speech
+        responsibility: Transcribe speech and return timestamped segments.
+        inputs: [audio_artifact]
+        outputs: [transcript]
+        optional: true
+      - id: temporal_analysis
+        responsibility: Associate events and changes across the source timeline.
+        inputs: [scenes, pose_results, audio_features, visual_descriptions, transcript]
+        outputs: [temporal_events]
+
+  - id: storyboard_generation
+    title: Storyboard generation and layout
+    plugins:
+      - id: storyboard
+        responsibility: Build the canonical storyboard document from analysis outputs.
+        inputs: [scenes, frames, temporal_events]
+        outputs: [storyboard_json]
+      - id: annotation
+        responsibility: Attach camera, movement, direction, and production annotations.
+        inputs: [storyboard_json, temporal_events]
+        outputs: [annotated_storyboard]
+      - id: review
+        responsibility: Support human inspection, correction, and approval.
+        inputs: [annotated_storyboard]
+        outputs: [reviewed_storyboard, review_decisions]
+      - id: slot
+        responsibility: Define storyboard layout slots and assign stable scene, shot, frame, or annotation references to them.
+        inputs: [storyboard_json, scenes, frames, temporal_events, slot_layout_config]
+        outputs: [slot_layout, slot_assignments]
+        rules:
+          preserve_storyboard_ids: true
+          preserve_source_timestamps: true
+          deterministic_assignments: true
+          report_unresolved_references: true
+
+  - id: output_quality
+    title: Output and quality
+    plugins:
+      - id: export
+        responsibility: Export approved storyboard and overlay artifacts.
+        inputs: [reviewed_storyboard, slot_layout, slot_assignments]
+        outputs: [exported_artifacts]
+      - id: validation
+        responsibility: Validate schemas, timeline consistency, and artifact references.
+        inputs: [reviewed_storyboard, exported_artifacts, slot_assignments]
+        outputs: [validation_report]
+      - id: evaluation
+        responsibility: Compare outputs against reference data and report quality metrics.
+        inputs: [reviewed_storyboard, validation_report, reference_data]
+        outputs: [evaluation_report]
+
+shared_contract:
+  required_fields:
+    - run_id
+    - plugin_id
+    - contract_version
+    - status
+  statuses: [success, partial, skipped, failed]
+  timestamp_basis: source_media_timeline
+  artifact_policy:
+    source_media_immutable: true
+    outputs_are_explicit_paths: true
+    include_provenance: true
+  errors:
+    must_be_structured: true
+    must_not_be_silently_swallowed: true
+
+service_policy:
+  implementation_language: python
+  service_boundary: independent_plugin_contract
+  local_execution_without_docker: required
+  mcp: agent_facing_tool_interface
+  openapi: http_contract_when_http_enabled
+  business_logic_shared_across_adapters: true
+  orchestration_owner: langgraph
+  visualization_source: runtime_registry_graph_and_jsonl_events
+  containerization: optional_deployment_adapter
+
+notes:
+  - This is a design catalog, not a claim that all 16 plugins are implemented.
+  - Slot is a layout and assignment capability, not a second storyboard generator.
+  - Every plugin should have an independent contract and service boundary; local process hosting may be selected per capability.
+  - MCP and HTTP adapters must reuse the same Python implementation.
+  - Docker is optional and is not the default local execution path.

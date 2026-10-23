@@ -39,7 +39,7 @@ The normal LangGraph run exports pose overlays for each sampled frame where Medi
 For an optional local webcam preview (press **q** or **Esc** to quit):
 
 ```bash
-PYTHONPATH=src python -m video2storyboard.pose_render --camera 0
+PYTHONPATH=src python -m video2storyboard.work.pose.pose_render --camera 0
 ```
 
 Use `--no-mirror` to disable mirror display or `--camera 1` to select another camera. The preview requires a local desktop session and GUI-enabled `opencv-python`; it is not suitable for a headless server. Video analysis and overlay generation remain local and do not upload frames.
@@ -53,8 +53,8 @@ Use `--no-mirror` to disable mirror display or `--camera 1` to select another ca
 
 ```bash
 python -m pip install -r requirements.txt
-PYTHONPATH=src python -c "from video2storyboard.graph import app; print(app.get_graph().draw_mermaid())"
-PYTHONPATH=src python -c "from video2storyboard.graph import app; result=app.invoke({'source_video':'/path/to/input.mp4','output_dir':'outputs','config':{'frame_interval_seconds':1.0}}); print(result.get('artifacts'), result.get('status'))"
+PYTHONPATH=src python -c "from video2storyboard.work.storyboard.graph import app; print(app.get_graph().draw_mermaid())"
+PYTHONPATH=src python -c "from video2storyboard.work.storyboard.graph import app; result=app.invoke({'source_video':'/path/to/input.mp4','output_dir':'outputs','config':{'frame_interval_seconds':1.0}}); print(result.get('artifacts'), result.get('status'))"
 ```
 
 For Colab, clone this repository, install `requirements.txt`, mount Drive, and pass the mounted video path as `source_video` and a Drive folder as `output_dir`. For Kaggle, pass the dataset file path and a writable `/kaggle/working` output directory.
@@ -217,6 +217,9 @@ Storyboard JSONを正規データ（canonical artifact）として扱い、ビ�
 | SVG | [`v2s-architecture.svg`](docs/v2s-architecture.svg) | [`v2s-sequence.svg`](docs/v2s-sequence.svg) |
 | PlantUML | [`v2s-architecture.puml`](docs/v2s-architecture.puml) | [`v2s-sequence.puml`](docs/v2s-sequence.puml) |
 
+The work-oriented source layout is defined in
+[`v2s-code-structure.puml`](docs/v2s-code-structure.puml).
+
 ## OpenCode MCP (local-only)
 
 The repository includes a stdio MCP server at `src/video2storyboard/mcp_server.py`. It exposes three tools to OpenCode:
@@ -234,7 +237,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 $env:VIDEO2STORYBOARD_VLM_MODEL = "YOUR_VISION_MODEL_ID"
 $env:LM_STUDIO_BASE_URL = "http://127.0.0.1:1234/v1"
-.\.venv\Scripts\python.exe -m video2storyboard.mcp_server
+.\.venv\Scripts\python.exe -m video2storyboard.interfaces.mcp
 ```
 
 The last command starts the MCP stdio process; normally OpenCode starts it for you. Keep LM Studio running with a vision-capable model loaded. To discover model IDs:
@@ -254,7 +257,7 @@ Add the following MCP entry to your OpenCode configuration. Replace the example 
       "command": [
         "C:/path/to/video2storyboard/.venv/Scripts/python.exe",
         "-m",
-        "video2storyboard.mcp_server"
+        "video2storyboard.interfaces.mcp"
       ],
       "environment": {
         "PYTHONPATH": "C:/path/to/video2storyboard/src",

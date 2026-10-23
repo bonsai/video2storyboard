@@ -1,0 +1,21 @@
+flowchart LR
+  user["User"] --> import["Video Import<br/>MP4 / MOV / WebM"]
+  import --> metadata["Metadata Reader<br/>FPS · duration · resolution"]
+  metadata --> detect["Shot / Scene Detection"]
+  detect --> extract["Keyframe Extraction"]
+  extract --> quality["Frame Quality Filter"]
+  quality --> adapter["VLM Adapter"]
+  adapter --> describe["Visual Description"]
+  adapter --> temporal["Temporal Story Analysis"]
+  describe --> builder["Storyboard Builder"]
+  temporal --> builder
+  audio["Optional Audio / OCR<br/>ASR · subtitles · text"] -. context .-> builder
+  pose["Optional MediaPipe Pose<br/>landmarks · motion cues"] -. motion cues .-> builder
+  builder --> json["Canonical Storyboard JSON"]
+  assets["Keyframe Image Assets"] --> json
+  json --> validate["Schema Validator"]
+  validate --> viewer["HTML Storyboard Viewer<br/>review · edit · reorder"]
+  viewer --> export["Export<br/>JSON · HTML · PDF · PNG"]
+
+  classDef optional stroke-dasharray: 5 5;
+  class audio,pose optional;

@@ -1,0 +1,37 @@
+sequenceDiagram
+  actor User
+  participant UI as Import / Review UI
+  participant Ingest as Video Importer
+  participant Shot as Shot Detector
+  participant Frames as Keyframe Extractor
+  participant VLM as VLM Adapter
+  participant Pose as Optional MediaPipe
+  participant Builder as Storyboard Builder
+  participant Validator as Schema Validator
+  participant Store as JSON + Image Assets
+
+  User->>UI: Select video
+  UI->>Ingest: Open video
+  Ingest->>Ingest: Read metadata (FPS, duration, resolution)
+  Ingest->>Shot: Analyze frames / detect boundaries
+  Shot-->>Frames: Shot boundaries
+  Frames->>Frames: Select representative keyframes
+  Frames-->>VLM: Keyframes + timestamps
+  opt Motion cues enabled
+    Frames-->>Pose: Frames / sampled video
+    Pose-->>Builder: Pose landmarks and motion cues
+  end
+  VLM->>VLM: Describe frames and infer shot-level narrative
+  VLM-->>Builder: Descriptions, actions, entities, continuity
+  Builder->>Validator: Build storyboard document
+  Validator->>Validator: Check schema, timestamps, asset references
+  alt Valid storyboard
+    Validator->>Store: Save storyboard.json and keyframes
+    Store-->>UI: Storyboard artifact
+    UI-->>User: Display editable storyboard panels
+    User->>UI: Edit captions / reorder panels
+    UI->>Store: Save reviewed JSON
+  else Validation errors
+    Validator-->>UI: Errors with panel references
+    UI-->>User: Show validation feedback
+  end

@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
-from src.video2storyboard.dance_ir import DanceIR, IRPose, IRFrame
+from video2storyboard.work.dance.ir import DanceIR, IRPose, IRFrame
 
 
 # ---------------------------------------------------------------------------

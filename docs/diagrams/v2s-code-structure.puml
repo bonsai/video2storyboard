@@ -1,0 +1,78 @@
+@startuml v2s_code_structure
+title V2S — work-oriented code structure
+left to right direction
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+package "video2storyboard" {
+  package "work" {
+    package "pose" as pose {
+      [pose_tasks] as pose_tasks
+      [pose_render] as pose_render
+      [pose_video] as pose_video
+      [pose_layer_image] as pose_layer
+    }
+
+    package "dance" as dance {
+      [dsl] as dance_dsl
+      [dance-retarget.yaml] as dance_yaml
+      [ir] as dance_ir
+      [semantic_cube] as semantic_cube
+    }
+
+    package "storyboard" as storyboard {
+      package "graph" as graph {
+        [state] as graph_state
+        [nodes] as graph_nodes
+        [workflow] as graph_workflow
+      }
+      package "plugins" as plugins {
+        [contract + registry] as plugin_core
+        [ingest / vision / pose / speech] as plugin_workers
+        [storyboard / export / validation] as plugin_output
+      }
+    }
+  }
+
+  package "interfaces" as interfaces {
+    [mcp] as mcp
+    [worker_api] as worker_api
+  }
+}
+
+component "pipeline1_video_to_dance.py" as pipeline1
+component "pipeline2_dance_to_3d.py" as pipeline2
+component "backends/vtuber.py" as vtuber
+
+pose_layer --> pose_tasks
+pose_layer --> pose_render
+pose_video --> pose_tasks : pose landmarks
+dance_dsl --> dance_ir : validated DSL → IR
+dance_dsl --> dance_yaml : reads
+semantic_cube --> dance_ir : compares pose-derived data
+graph_nodes --> pose_tasks : samples poses
+graph_nodes --> pose_render : writes overlays
+graph_workflow --> graph_nodes
+graph_nodes --> graph_state
+plugin_workers --> plugin_core
+plugin_output --> plugin_core
+mcp --> graph_workflow : runs V2S
+worker_api --> graph_nodes : worker operations
+worker_api --> mcp : VLM adapter
+pipeline1 --> graph_nodes
+pipeline1 --> pose_render
+pipeline2 --> pose_tasks
+pipeline2 --> pose_render
+vtuber --> dance_ir
+
+note bottom of interfaces
+Interfaces expose work domains.
+They do not contain domain implementation.
+end note
+
+note top of work
+Add a feature to the work domain matching
+its user-facing outcome, never package root.
+end note
+@enduml

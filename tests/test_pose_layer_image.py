@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import pytest
 
-from video2storyboard.pose_layer_image import make_layer_image
+from video2storyboard.work.pose.pose_layer_image import make_layer_image
 
 
 def _make_synthetic_frame(path: Path) -> None:

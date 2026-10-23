@@ -1,4 +1,4 @@
-from video2storyboard.graph.workflow import build_graph
+from video2storyboard.work.storyboard.graph.workflow import build_graph
 
 
 def test_graph_compiles_and_exposes_worker_nodes():

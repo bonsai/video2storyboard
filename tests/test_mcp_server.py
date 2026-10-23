@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from video2storyboard import mcp_server
+from video2storyboard.interfaces import mcp as mcp_server
 
 
 def test_analyze_rejects_missing_video(tmp_path):

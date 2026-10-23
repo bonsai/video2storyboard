@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from video2storyboard import worker_api
+from video2storyboard.interfaces import worker_api
 
 
 def test_health_reports_selected_worker():

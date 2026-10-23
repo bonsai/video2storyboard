@@ -1,7 +1,7 @@
 """Focused tests for #19 — pose overlay visible + JSON/JSONL + no source overwrite."""
 import pytest, sys, json, tempfile
 sys.path.insert(0,"src")
-from video2storyboard.plugins.pose import run, PluginContext
+from video2storyboard.work.storyboard.plugins.pose import run, PluginContext
 
 def test_pose_implements_jsonl_and_does_not_overwrite_source():
     ctx = PluginContext(run_id="test-19")

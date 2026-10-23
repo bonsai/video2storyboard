@@ -1,0 +1,104 @@
+schema_version: "1.0"
+
+unit:
+  id: pose
+  name: POSE
+  purpose: "Estimate human/skeleton pose from selected still-image frames."
+  implementation:
+    language: python
+    library: mediapipe
+    entrypoint: eye_pose_mp
+    runtime: local
+  status: specification
+
+scope:
+  input:
+    media_type: still_image
+    formats:
+      - png
+    source_timeline: ../../timelines.yaml
+    allowed_segment_ids:
+      - skeleton_dance
+    time_range:
+      start: "00:02:20"
+      end: "00:03:45"
+      start_inclusive: true
+      end_inclusive: false
+    preserve_source_timestamp: true
+  excluded:
+    - appearance_segment
+    - performance_segment
+    - unclassified_frames
+    - direct_video_stream
+  processing:
+    static_image_mode: true
+    model: pose
+    detect_multiple_people: false
+    require_timeline_filter_before_inference: true
+    fail_closed_when_timeline_missing: true
+
+dependencies:
+  python:
+    minimum: "3.9"
+    note: "Confirm the selected MediaPipe wheel supports the project's exact Python version and platform before pinning."
+  required:
+    - name: mediapipe
+      import: mediapipe
+      purpose: "Pose landmark estimation"
+      version: "Use project-compatible version; reconcile with root requirements.txt"
+    - name: opencv-python
+      import: cv2
+      purpose: "Read PNG frames and render pose overlays"
+      version: "Use project-compatible version; already declared in root requirements.txt"
+  optional:
+    - name: pillow
+      import: PIL
+      purpose: "Optional image conversion and inspection; add only if implementation requires it."
+  avoid_duplicate_declarations: true
+  canonical_dependency_file: ../../requirements.txt
+
+outputs:
+  - name: pose_landmarks
+    format: json
+    required: true
+  - name: skeleton_overlay_png
+    format: png
+    required: true
+  - name: skeleton_overlay_svg
+    format: svg
+    required: true
+  - name: source_timestamp
+    format: string
+    required: true
+  - name: frame_id
+    format: string
+    required: true
+  - name: scene_label
+    format: string
+    required: true
+
+error_policy:
+  out_of_timeline: skip
+  missing_timeline: fail
+  unclassified_frame: skip
+  unreadable_image: record_error_and_continue
+  no_pose_detected: record_not_detected_and_continue
+  invalid_landmarks: record_error_and_continue
+
+constraints:
+  - "Do not analyze frames outside the configured skeleton_dance timeline segment."
+  - "Do not pass the video stream directly to MediaPipe; infer from extracted still PNG files."
+  - "Keep execution local; do not upload source media or use cloud fallback."
+  - "Do not add dependencies to the root requirements.txt without a documented need."
+  - "Treat this YAML as a unit contract; runtime enforcement and tests must be implemented separately."
+
+acceptance_criteria:
+  - "Only frames with timestamps in [00:02:20, 00:03:45) reach MediaPipe."
+  - "Frames outside the selected interval are skipped before pose inference."
+  - "Every result retains source timestamp and frame ID."
+  - "Missing timeline configuration fails closed."
+  - "Tests cover boundary timestamps, excluded segments, unreadable images, and no-pose results."
+
+references:
+  - "https://developers.google.com/edge/mediapipe/solutions/setup_python"
+  - "https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker/python"

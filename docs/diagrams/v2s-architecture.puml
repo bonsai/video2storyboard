@@ -1,0 +1,73 @@
+@startuml v2s_architecture
+title V2S - Video to Storyboard
+left to right direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+actor "Creator / Researcher" as User
+
+package "Input" {
+  component "Video Import\nMP4 / MOV / WebM" as Video
+  component "Metadata Reader\nFPS / Duration / Resolution" as Metadata
+}
+
+package "Video Analysis" {
+  component "Shot / Scene Detection" as Shots
+  component "Keyframe Extraction" as Frames
+  component "Frame Quality Filter" as Quality
+  component "Optional Audio / OCR\nASR transcript, subtitles" as TextSignals
+}
+
+package "VLM Analysis" {
+  component "VLM Adapter" as VLM
+  component "Visual Description" as Description
+  component "Temporal Story Analysis" as StoryAnalysis
+  component "Optional Pose Adapter\nMediaPipe" as Pose
+}
+
+package "Storyboard Artifact" {
+  database "Storyboard JSON\ncanonical data" as JSON
+  folder "Keyframe Assets\nimage files" as Assets
+  component "Schema Validator" as Validator
+}
+
+package "Review and Export" {
+  component "HTML Storyboard Viewer\nedit / reorder / review" as Viewer
+  component "Export\nJSON / HTML / PDF / PNG" as Export
+}
+
+User --> Video : select source
+Video --> Metadata
+Video --> Shots
+Metadata --> Shots
+Shots --> Frames : shot boundaries
+Frames --> Quality
+Quality --> VLM : representative frames
+VLM --> Description
+Description --> StoryAnalysis
+Video --> TextSignals : optional audio / subtitles
+TextSignals --> StoryAnalysis : transcript / OCR
+Quality --> Assets : save keyframes
+Quality --> Pose : optional person-motion features
+Pose --> StoryAnalysis : pose / action cues
+StoryAnalysis --> JSON : ordered shot annotations
+JSON --> Validator
+Assets --> Validator
+Validator --> Viewer : validated artifact
+Viewer --> JSON : save edits
+JSON --> Export
+Assets --> Export
+Viewer --> User : inspect storyboard
+Export --> User : deliverable
+
+note bottom of JSON
+Primary output is an editable storyboard,
+not a rendered paper-theater video.
+end note
+
+note bottom of Pose
+Pose analysis is optional.
+VLM handles general visual understanding.
+end note
+@enduml
