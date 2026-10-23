@@ -16,6 +16,11 @@ design_rules:
   source_timeline_timestamps: true
   human_review_supported: true
   reuse_existing_implementations_first: true
+  docker_required: false
+  local_python_execution: true
+  mcp_tool_interface: true
+  openapi_for_http_services: true
+  dashboard_from_runtime_events: true
 
 domains:
   - id: input_video_analysis
@@ -123,8 +128,20 @@ shared_contract:
     must_be_structured: true
     must_not_be_silently_swallowed: true
 
+service_policy:
+  implementation_language: python
+  service_boundary: independent_plugin_contract
+  local_execution_without_docker: required
+  mcp: agent_facing_tool_interface
+  openapi: http_contract_when_http_enabled
+  business_logic_shared_across_adapters: true
+  orchestration_owner: langgraph
+  visualization_source: runtime_registry_graph_and_jsonl_events
+  containerization: optional_deployment_adapter
+
 notes:
   - This is a design catalog, not a claim that all 16 plugins are implemented.
   - Slot is a layout and assignment capability, not a second storyboard generator.
-  - Plugin boundaries and dependencies must be reviewed against the current graph before implementation.
-  - Avoid making every plugin a separate service; start as modules behind stable contracts.
+  - Every plugin should have an independent contract and service boundary; local process hosting may be selected per capability.
+  - MCP and HTTP adapters must reuse the same Python implementation.
+  - Docker is optional and is not the default local execution path.
