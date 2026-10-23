@@ -1,0 +1,6 @@
+langgraph>=0.2.0
+opencv-python-headless>=4.9
+mediapipe>=0.10.14
+faster-whisper>=1.0.0
+jsonschema>=4.22
+pytest>=8.0
