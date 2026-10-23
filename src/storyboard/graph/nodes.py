@@ -95,57 +95,10 @@ def video2png(state: VideoState) -> VideoState:
 
 
 def eye_pose_mp(state: VideoState) -> VideoState:
-    try:
-        import cv2
-        import numpy as np
-        results = []
-        pose_api = get_tasks_pose(static_image_mode=True, model_complexity=1,
-                                  min_detection_confidence=0.5)
-        with pose_api as pose:
-            connections = list(get_pose_connections())
-            for frame in state.get("frames", []):
-                image = cv2.imread(frame["image"])
-                if image is None:
-                    results.append({"frame_id": frame["frame_id"], "timestamp_seconds": frame["timestamp_seconds"],
-                                    "status": "unreadable_image", "landmarks": None})
-                    continue
-                rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                if not rgb.flags["C_CONTIGUOUS"]:
-                    rgb = np.ascontiguousarray(rgb)
-                result = pose.process(rgb)
-                landmarks = None
-                if result.pose_landmarks:
-                    landmarks = [{"index": i, "name": get_landmark_name(i),
-                                  "x": float(p.x), "y": float(p.y), "z": float(p.z),
-                                  "visibility": float(p.visibility)}
-                                 for i, p in enumerate(result.pose_landmarks.landmark)]
-                status = "detected" if landmarks else "not_detected"
-                record = {"frame_id": frame["frame_id"], "timestamp_seconds": frame["timestamp_seconds"],
-                          "status": status, "landmarks": landmarks, "image_width": frame.get("width"),
-                          "image_height": frame.get("height")}
-                append_event(state, {"worker": "eye_pose_mp", "event": "pose_result", "frame_id": frame["frame_id"], "status": status})
-                if not landmarks:
-                    append_event(state, {"worker": "eye_pose_mp", "event": "pose_not_detected", "frame_id": frame["frame_id"]})
-                    results.append(record)
-                    continue
-                if landmarks:
-                    try:
-                        from ...pose.pose_render import render_pose_artifacts
-                        overlay_dir = Path(state.get("output_dir", "outputs")) / state.get("run_id", "run") / "pose-overlays"
-                        record.update(render_pose_artifacts(image, landmarks, connections,
-                                                            overlay_dir, frame["frame_id"]))
-                        status = "overlay_written"
-                    except Exception as render_exc:
-                        # Keep successful landmarks even if visual export fails.
-                        record["overlay_error"] = str(render_exc)
-                        status = "overlay_error"
-                    append_event(state, {"worker": "eye_pose_mp", "event": "pose_overlay", "frame_id": frame["frame_id"], "status": status})
-                if status == "error":
-                    record["status"] = "error"
-                results.append(record)
-        return {"pose_results": results}
-    except Exception as exc:
-        return {"pose_results": [], "errors": _error(state, "eye_pose_mp", f"MediaPipe unavailable/failed: {exc}")}
+    """Run the MediaPipe Tasks worker from its dedicated implementation module."""
+    from .tasks_nodes import eye_pose_mp as run_tasks_pose
+
+    return run_tasks_pose(state)
 
 
 def eye_composition_cv2(state: VideoState) -> VideoState:
