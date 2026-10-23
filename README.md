@@ -161,3 +161,70 @@ Storyboard JSONを正規データ（canonical artifact）として扱い、ビ�
 | Mermaid | [`v2s-architecture.mmd`](docs/v2s-architecture.mmd) | [`v2s-sequence.mmd`](docs/v2s-sequence.mmd) |
 | SVG | [`v2s-architecture.svg`](docs/v2s-architecture.svg) | [`v2s-sequence.svg`](docs/v2s-sequence.svg) |
 | PlantUML | [`v2s-architecture.puml`](docs/v2s-architecture.puml) | [`v2s-sequence.puml`](docs/v2s-sequence.puml) |
+
+## OpenCode MCP (local-only)
+
+The repository includes a stdio MCP server at `src/video2storyboard/mcp_server.py`. It exposes three tools to OpenCode:
+
+- `video2storyboard_check_local` — checks Python dependencies, FFmpeg, and the local LM Studio model list without opening media.
+- `video2storyboard_analyze` — runs the LangGraph workflow against an explicit local video path and writes artifacts locally.
+- `video2storyboard_get_run` — summarizes the JSON/HTML/SVG files in a local run directory.
+
+### Install and configure
+
+From the repository root in PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+$env:VIDEO2STORYBOARD_VLM_MODEL = "YOUR_VISION_MODEL_ID"
+$env:LM_STUDIO_BASE_URL = "http://127.0.0.1:1234/v1"
+.\.venv\Scripts\python.exe -m video2storyboard.mcp_server
+```
+
+The last command starts the MCP stdio process; normally OpenCode starts it for you. Keep LM Studio running with a vision-capable model loaded. To discover model IDs:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:1234/v1/models
+```
+
+Add the following MCP entry to your OpenCode configuration. Replace the example repository path and model ID with your actual values; use escaped backslashes or forward slashes in Windows paths.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "video2storyboard": {
+      "type": "local",
+      "command": [
+        "C:/path/to/video2storyboard/.venv/Scripts/python.exe",
+        "-m",
+        "video2storyboard.mcp_server"
+      ],
+      "environment": {
+        "PYTHONPATH": "C:/path/to/video2storyboard/src",
+        "LM_STUDIO_BASE_URL": "http://127.0.0.1:1234/v1",
+        "VIDEO2STORYBOARD_VLM_MODEL": "YOUR_VISION_MODEL_ID"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+If your OpenCode version uses a different configuration location, merge only the `mcp.video2storyboard` entry into its existing config rather than replacing the whole file.
+
+### Try it from OpenCode
+
+1. Call `video2storyboard_check_local` and resolve any missing dependencies or model configuration.
+2. Call `video2storyboard_analyze` with a short, non-sensitive local video path, for example `C:/Videos/sample.mp4`.
+3. Call `video2storyboard_get_run` with the returned run directory (normally `<output_dir>/<run_id>`).
+
+### Privacy and current limits
+
+- The MCP server calls only the configured local LM Studio endpoint. It has no cloud VLM fallback and does not upload source video, frames, audio, or storyboards to cloud services.
+- Only pass video paths you intend the local process to read. Generated artifacts remain on the selected local output path.
+- FFmpeg must be installed separately and available on `PATH`.
+- Whisper, MediaPipe, and OpenCV can fail independently; errors are returned in the run result.
+- MCP integration and tests have been added, but do not treat them as locally verified until `python -m pytest -q` passes on your machine. A model appearing in `/v1/models` does not by itself prove vision support.
+
