@@ -2,6 +2,51 @@
 
 動画から、ショット単位の**絵コンテ（Storyboard）**を自動生成するための設計・実装プロジェクトです。動画を紙芝居動画に変換するのではなく、映像の流れを確認・編集できる「絵コンテ資料」を作ることを目的にします。
 
+## LangGraph worker pipeline (implementation)
+
+The executable worker graph lives in `src/video2storyboard/graph/`. All video-analysis workers are implemented in this repository; `visual-factory` is not a runtime dependency.
+
+```mermaid
+flowchart TD
+  A[Workbench: Kaggle Dataset / Colab + Drive] --> B[ingest_video]
+  B --> C[video2png]
+  C --> D[eye_pose_mp: MediaPipe Pose]
+  C --> E[eye_composition_cv2: OpenCV]
+  C --> F[eye_meaning_vlm: VLM adapter]
+  C --> G[ear_stt_whisper: Whisper]
+  D --> H[hand_storyboard_builder]
+  E --> H
+  F --> H
+  G --> H
+  H --> I[paper_html_svg]
+  I --> J[validate_storyboard]
+  J --> K[Storyboard JSON + HTML + SVG + PNG assets]
+  K --> L[Colab / Drive output]
+```
+
+- **Workbench:** Kaggle datasets can provide reusable source videos. Google Colab is the interactive runtime; Google Drive is an optional persistent input/output location. Paths are supplied by the caller, not hard-coded.
+- **video2png:** extracts sampled PNG frames and records frame IDs, timestamps, dimensions and aspect ratio.
+- **Eye / pose:** Python MediaPipe Pose produces timestamp-linked landmarks. A missing detection is recorded as missing, never as a zero pose.
+- **Eye / composition:** OpenCV (`cv2`) measures dimensions, aspect ratio, luminance and edge density. Semantic background/context is not fabricated by CV measurements; the VLM adapter supplies interpretation.
+- **Eye / meaning:** `eye_meaning_vlm` accepts a provider adapter via `config["vlm_callable"]`. Configure this adapter for your selected VLM provider before expecting semantic descriptions.
+- **Ear / STT:** FFmpeg extracts audio and `faster-whisper` emits timestamped transcript segments.
+- **Hand / paper:** `hand_storyboard_builder` joins outputs by `frame_id` and timestamps. JSON is the structured source; HTML is the review surface; SVG is a portable visual rendering.
+- **LangGraph:** modality workers fan out after frame extraction and join at an explicit barrier before storyboard assembly. The graph is defined in code, so diagrams should be generated from the actual StateGraph when updated.
+
+### Run locally
+
+```bash
+python -m pip install -r requirements.txt
+PYTHONPATH=src python -c "from video2storyboard.graph import app; print(app.get_graph().draw_mermaid())"
+PYTHONPATH=src python -c "from video2storyboard.graph import app; result=app.invoke({'source_video':'/path/to/input.mp4','output_dir':'outputs','config':{'frame_interval_seconds':1.0}}); print(result.get('artifacts'), result.get('status'))"
+```
+
+For Colab, clone this repository, install `requirements.txt`, mount Drive, and pass the mounted video path as `source_video` and a Drive folder as `output_dir`. For Kaggle, pass the dataset file path and a writable `/kaggle/working` output directory.
+
+**Backend note:** the VLM adapter is intentionally provider-neutral and must be configured. Worker errors are preserved in the output. Use a LangGraph checkpointer and a stable `thread_id` for resumable runs when the selected storage backend supports it.
+
+---
+
 ## 目的
 
 - 動画を読み込み、シーン／ショットの境界を検出する
