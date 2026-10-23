@@ -1,0 +1,65 @@
+# Task-specific configuration for video analysis.
+# The source remains a video; MediaPipe receives extracted still-image frames only.
+schema_version: "1.0"
+task:
+  id: skeleton_dance_stills
+  source_task: video_analysis
+  objective: "Analyze only still frames belonging to skeleton-dance scenes."
+
+input:
+  media_type: video
+  extraction:
+    enabled: true
+    image_format: png
+    timestamped_frames: true
+    interval_seconds: 1.0
+  preserve_source_video: true
+
+filters:
+  scene_scope:
+    mode: allowlist
+    include:
+      - skeleton_dance
+    exclude_unclassified: true
+    require_scene_label: true
+
+layers:
+  video_analysis:
+    enabled: true
+    responsibility: "Extract frames and identify scenes on the source timeline."
+  mp_python:
+    id: eye_pose_mp
+    enabled: true
+    input_type: still_image
+    input_source: extracted_frames
+    static_image_mode: true
+    process_video_stream_directly: false
+    scene_filter_ref: filters.scene_scope
+    allowed_scene_labels:
+      - skeleton_dance
+    outputs:
+      - pose_landmarks
+      - skeleton_overlay_png
+      - skeleton_overlay_svg
+    skip_policy:
+      non_matching_scene: true
+      unclassified_scene: true
+      unreadable_image: record_error
+      no_pose_detected: record_not_detected
+
+outputs:
+  canonical_format: json
+  include_source_timestamp: true
+  include_frame_id: true
+  include_scene_label: true
+  local_only: true
+
+privacy:
+  upload_source_media: false
+  cloud_fallback: false
+
+notes:
+  - "This profile narrows the task; it does not change the canonical storyboard schema."
+  - "Only extracted PNG stills are sent to the MediaPipe Python layer."
+  - "Only frames labeled skeleton_dance should receive pose estimation and skeleton overlays."
+  - "The runtime must supply scene labels before the mp_python filter can enforce the allowlist."
