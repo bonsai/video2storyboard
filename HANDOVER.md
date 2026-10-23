@@ -63,3 +63,31 @@ Please note:
 5. Whether output JSON, HTML, SVG and thumbnails are present.
 
 Do not paste API keys, tokens, private videos, or private transcripts into an issue or chat.
+
+## OpenCode MCP integration (2026-10-23)
+
+Implementation entrypoint: `src/video2storyboard/mcp_server.py`.
+
+GitHub issue: https://github.com/bonsai/video2storyboard/issues/2
+
+### Tools exposed to OpenCode
+- `video2storyboard_check_local`: checks installed packages, FFmpeg, and LM Studio's local `/v1/models` endpoint.
+- `video2storyboard_analyze`: invokes LangGraph for a local video, supplying a local-only LM Studio image adapter.
+- `video2storyboard_get_run`: inspects storyboard JSON/HTML/SVG outputs and panel count.
+
+### Local setup
+1. Install updated dependencies: `python -m pip install -r requirements.txt`.
+2. Start LM Studio's local server and load a vision-capable model.
+3. Set `VIDEO2STORYBOARD_VLM_MODEL` to an exact model ID returned by `http://127.0.0.1:1234/v1/models`.
+4. Add the OpenCode config entry from the README, with absolute paths for the repository, Python executable and `src` directory.
+5. Restart OpenCode, then run `opencode mcp list` and call `video2storyboard_check_local`.
+
+### Before calling this complete
+- Run `python -m pytest -q` in the project environment.
+- Run a short, non-sensitive local video end-to-end.
+- Verify HTML thumbnails load; storyboard image paths were adjusted to be relative to the run directory.
+- Confirm MCP tool discovery and execution in OpenCode.
+- Do not send source videos, extracted frames, transcripts or generated artifacts to cloud services. There is no cloud inference fallback.
+
+The code and tests have been committed, but a successful local test run has not yet been confirmed.
+
