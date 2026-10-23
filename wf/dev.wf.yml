@@ -1,0 +1,55 @@
+schema_version: "1.0"
+id: development
+status: scaffold
+purpose: "Small, testable, contract-first development workflow for video2storyboard."
+topology:
+  entry: inspect
+  exit: report
+  nodes:
+    - {id: inspect, owner: survey}
+    - {id: reuse_or_select_tool, owner: survey}
+    - {id: define_contracts, owner: designer}
+    - {id: approve, owner: human}
+    - {id: implement_one_unit, owner: implementer}
+    - {id: test, owner: verifier}
+    - {id: visualize, owner: visualizer}
+    - {id: share, owner: publisher}
+    - {id: report, owner: coordinator}
+    - {id: blocked, owner: coordinator}
+  edges:
+    - [inspect, reuse_or_select_tool]
+    - [reuse_or_select_tool, define_contracts]
+    - [define_contracts, approve]
+    - [approve, implement_one_unit]
+    - [approve, blocked]
+    - [implement_one_unit, test]
+    - [test, visualize]
+    - [test, blocked]
+    - [visualize, share]
+    - [visualize, blocked]
+    - [share, report]
+  invariants:
+    - "Every node has one accountable owner."
+    - "Implement one bounded unit per cycle."
+    - "Implementation cannot approve its own change."
+    - "Required artifacts missing means blocked, not success."
+roles:
+  survey: "Inspect existing code and reusable tools; no production edits."
+  designer: "Define YAML, OpenAPI and JSON artifact contracts."
+  implementer: "Implement only the approved unit."
+  verifier: "Test independently and validate contracts/artifacts."
+  visualizer: "Generate diagrams/review artifacts from actual code or outputs."
+  publisher: "Update MAP and link reproducible artifacts."
+  human: "Approve scope changes, destructive changes and external publication."
+defaults:
+  source_media_local_only: true
+  upload_source_media: false
+  source_immutable: true
+  prefer_existing_implementations: true
+  avoid_heavy_local_installs: true
+  logs: jsonl
+active_unit:
+  workflow: wf/pose.wf.yml
+  agent_work: aw/pose.aw.yaml
+  api_contract: openapi/pose.yaml
+  artifact_schema: contracts/pose-artifact.schema.json
