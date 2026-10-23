@@ -7,7 +7,16 @@ project: video2storyboard
 runtime:
   orchestrator: langgraph
   entrypoint: src/video2storyboard/graph/workflow.py:app
+  # Decision: local-first; cloud execution is opt-in only.
   execution_mode: local
+  deployment_decision:
+    default_profile: local
+    local_vlm: LM_Studio
+    local_endpoint: http://127.0.0.1:1234/v1
+    cloud_enabled_by_default: false
+    cloud_vlm_fallback: disabled
+    cloud_data_upload: explicit_approval_required
+    colab_note: Colab localhost is the Colab VM, not the desktop LM Studio host.
   output_dir: outputs
   privacy:
     local_inference_only: true
@@ -44,6 +53,8 @@ providers:
   vlm:
     id: lm_studio_local
     enabled: true
+    execution_location: local
+    cloud_fallback: disabled
     protocol: openai_compatible_chat_completions
     base_url: ${LM_STUDIO_BASE_URL:-http://127.0.0.1:1234/v1}
     endpoint: /chat/completions
@@ -191,6 +202,9 @@ environment:
     description: "Only needed if LM Studio server authentication is enabled"
 
 notes:
+  - "Decision: all video analysis and VLM inference run locally through LM Studio by default."
+  - "Cloud is opt-in for dataset access, notebook execution, or explicitly approved artifact storage only."
+  - "No automatic cloud inference fallback is allowed."
   - "This file declares intended topology; workflow.py currently wires the graph in Python."
   - "The current eye_meaning_vlm node still expects config.vlm_callable. A provider adapter must read this topology and call LM Studio before this setting is operational."
   - "Do not use a text-only model for the VLM worker."
