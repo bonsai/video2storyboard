@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850" role="img" aria-labelledby="title desc">
+  <title id="title">animate_stick_figure.py — Event Flow</title>
+  <desc id="desc">Sequence diagram showing CLI input, JSONL parsing, standalone HTML generation, and browser playback controls.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#344054"/></marker>
+    <style>
+      text{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#101828}
+      .heading{font-size:25px;font-weight:700}.sub{font-size:14px;fill:#475467}
+      .actor{fill:#eef4ff;stroke:#6172f3;stroke-width:1.5}.actorText{font-size:15px;font-weight:600}
+      .life{stroke:#98a2b3;stroke-width:1.5;stroke-dasharray:6 6}
+      .event{stroke:#344054;stroke-width:1.7;fill:none;marker-end:url(#arrow)}
+      .reply{stroke:#667085;stroke-width:1.5;stroke-dasharray:5 4;fill:none;marker-end:url(#arrow)}
+      .label{font-size:14px}.note{fill:#fffaeb;stroke:#fdb022;stroke-width:1.3}.noteText{font-size:13px}
+      .section{font-size:17px;font-weight:700;fill:#344054}
+    </style>
+  </defs>
+  <rect width="1200" height="850" fill="#ffffff"/>
+  <text x="40" y="45" class="heading">animate_stick_figure.py — Event Flow</text>
+  <text x="40" y="70" class="sub">JSONL → standalone HTML → browser playback · local-only, source remains read-only</text>
+
+  <g>
+    <rect class="actor" x="40" y="100" width="150" height="52" rx="9"/><text class="actorText" x="115" y="131" text-anchor="middle">User / CLI</text>
+    <rect class="actor" x="250" y="100" width="165" height="52" rx="9"/><text class="actorText" x="332" y="131" text-anchor="middle">main()</text>
+    <rect class="actor" x="475" y="100" width="165" height="52" rx="9"/><text class="actorText" x="557" y="131" text-anchor="middle">JSONL Loader</text>
+    <rect class="actor" x="700" y="100" width="165" height="52" rx="9"/><text class="actorText" x="782" y="131" text-anchor="middle">HTML Builder</text>
+    <rect class="actor" x="925" y="100" width="220" height="52" rx="9"/><text class="actorText" x="1035" y="131" text-anchor="middle">Browser / Canvas</text>
+    <path class="life" d="M115 152 V805 M332 152 V805 M557 152 V805 M782 152 V805 M1035 152 V805"/>
+  </g>
+
+  <text class="section" x="40" y="190">A. Generate the animation page</text>
+  <path class="event" d="M115 215 H322"/><text class="label" x="220" y="205" text-anchor="middle">Run CLI with input/output paths</text>
+  <path class="event" d="M332 250 H547"/><text class="label" x="440" y="240" text-anchor="middle">load_jsonl(path)</text>
+  <path class="reply" d="M547 282 H342"/><text class="label" x="445" y="272" text-anchor="middle">Parse, normalize, sort frames</text>
+  <path class="event" d="M332 318 H772"/><text class="label" x="550" y="308" text-anchor="middle">make_html(frames, title)</text>
+  <path class="event" d="M782 354 H342"/><text class="label" x="562" y="344" text-anchor="middle">Return standalone HTML string</text>
+  <path class="event" d="M332 390 H115"/><text class="label" x="222" y="380" text-anchor="middle">Write output HTML</text>
+  <rect class="note" x="250" y="410" width="615" height="54" rx="8"/>
+  <text class="noteText" x="267" y="432">Validation: reject invalid timestamps / malformed JSONL;</text>
+  <text class="noteText" x="267" y="450">prevent output path from overwriting the input file.</text>
+
+  <text class="section" x="40" y="505">B. Play back in the browser</text>
+  <path class="event" d="M115 530 H1025"/><text class="label" x="570" y="520" text-anchor="middle">Open generated HTML (no network request)</text>
+  <path class="event" d="M1035 566 H795"/><text class="label" x="915" y="556" text-anchor="middle">Draw initial frame</text>
+  <path class="event" d="M115 602 H1025"/><text class="label" x="570" y="592" text-anchor="middle">Press Play / Pause / Restart, change speed, or seek</text>
+  <path class="event" d="M1035 638 H795"/><text class="label" x="915" y="628" text-anchor="middle">Update frame via requestAnimationFrame</text>
+  <path class="reply" d="M1035 674 H795"/><text class="label" x="915" y="664" text-anchor="middle">Update timestamp and slider</text>
+  <rect class="note" x="700" y="710" width="445" height="64" rx="8"/>
+  <text class="noteText" x="718" y="733">Canvas renders the current pose using the</text>
+  <text class="noteText" x="718" y="752">MediaPipe Pose connection list.</text>
+  <text class="sub" x="40" y="820">Scope: this script visualizes existing timestamped Pose JSONL; it does not extract landmarks from video.</text>
+</svg>
