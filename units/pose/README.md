@@ -1,27 +1,46 @@
 # Pose unit
 
-**Milestone 1:** make the MediaPipe Pose layer visible and save inspectable output.
+**Milestone 1:** visibly render the MediaPipe Pose skeleton on local video using the existing implementation.
 
-## Contract
+## Run now
+
+From the repository root, after dependencies are installed:
+
+```powershell
+python src/video2storyboard/pose_video.py --input-video "PATH_TO_LOCAL_VIDEO.mp4" --preview
+```
+
+- Press **P** to toggle the Pose overlay.
+- Press **Q** or **Esc** to quit.
+
+To export a silent overlay video without requiring FFmpeg:
+
+```powershell
+python src/video2storyboard/pose_video.py --input-video "PATH_TO_LOCAL_VIDEO.mp4" --output-video "artifacts/pose/pose-overlay.mp4" --no-audio
+```
+
+The output path must differ from the source path. This reuses the existing implementation. It does **not yet** create the JSON landmark/JSONL artifacts required by the longer-term API contract.
+
+## Canonical contracts
 
 - Workflow: [`wf/pose.wf.yml`](../../wf/pose.wf.yml)
-- Agent workflow: [`aw/pose.aw.yaml`](../../aw/pose.aw.yaml)
+- Agent work: [`aw/pose.aw.yaml`](../../aw/pose.aw.yaml)
 - API contract: [`openapi/pose.yaml`](../../openapi/pose.yaml)
 - Artifact schema: [`contracts/pose-artifact.schema.json`](../../contracts/pose-artifact.schema.json)
 
 ## Reuse first
 
-The repository already has `src/video2storyboard/pose_render.py` and `pose_video.py`. Extend or call those implementations rather than introducing another renderer.
+Reuse `src/video2storyboard/pose_video.py` and `pose_render.py`; do not introduce a second renderer or install heavyweight tools unnecessarily.
 
 ## Acceptance
 
-Given one local frame, produce:
-- an overlay PNG that visibly shows the pose skeleton;
-- a JSON record with source frame ID/timestamp, dimensions, landmark coordinates, visibility, and explicit status;
-- a JSONL run log.
+- [ ] The preview visibly shows the skeleton on a real local input.
+- [ ] A silent overlay MP4 can be exported without FFmpeg when requested.
+- [ ] Source file remains unchanged.
+- [ ] Focused tests pass.
 
-Do not overwrite or upload source media.
+The full contract target additionally requires pose JSON, explicit `detected/no_pose/error` status, a JSONL run record, and artifact validation. These are not claimed implemented by this scaffold.
 
-## Next milestone
+## Tomorrow
 
-Tomorrow: use the timestamped Pose JSON sequence to reconstruct the dance motion. This is out of scope for the current scaffold.
+Use timestamped Pose JSON sequences to reconstruct dance motion as a synchronized 2D stick-figure animation.
