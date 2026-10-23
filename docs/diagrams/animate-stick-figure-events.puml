@@ -1,0 +1,47 @@
+@startuml animate-stick-figure-events
+title Stick Figure Dance — Event Flow
+autonumber
+actor User
+participant "Python CLI\nmain()" as CLI
+participant "load_jsonl()" as Loader
+participant "make_html()" as Builder
+database "Local JSONL" as JSONL
+file "Generated HTML" as HTML
+participant "Browser UI\nCanvas + JavaScript" as Browser
+
+User -> CLI : Run script with input/output paths
+CLI -> CLI : Resolve paths and validate
+CLI -> JSONL : Check input exists
+CLI -> Loader : load_jsonl(input)
+Loader -> JSONL : Read each line (UTF-8)
+loop Each non-empty line
+  Loader -> Loader : Parse JSON object
+  Loader -> Loader : Normalize landmarks + timestamp
+end
+Loader -> Loader : Sort frames by timestamp_ms
+Loader --> CLI : frames[]
+CLI -> Builder : make_html(frames, title)
+Builder -> Builder : Serialize frames and connections
+Builder -> Builder : Compose standalone HTML/CSS/JS
+Builder --> CLI : HTML string
+CLI -> HTML : Create parent directory and write file
+CLI --> User : Print frame count, duration, output path
+User -> Browser : Open generated HTML locally
+Browser -> Browser : draw() first frame
+alt Click Play
+  loop While playing
+    Browser -> Browser : requestAnimationFrame(tick)
+    Browser -> Browser : Advance elapsed time by speed
+    Browser -> Browser : Find nearest timestamped frame
+    Browser -> Browser : draw() bones, joints, status
+  end
+else Seek / Restart
+  User -> Browser : Change slider or click Restart
+  Browser -> Browser : Set current frame / elapsed time
+  Browser -> Browser : draw()
+end
+note over JSONL,HTML
+Input is read-only. Output is a separate HTML file.
+Playback is client-side and makes no network requests.
+end note
+@enduml
