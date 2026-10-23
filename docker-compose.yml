@@ -1,0 +1,57 @@
+name: video2storyboard
+
+x-worker: &worker
+  build: .
+  restart: unless-stopped
+  environment:
+    PYTHONPATH: /app/src
+    LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1
+    VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  volumes:
+    - ./input:/workspace/input:ro
+    - ./outputs:/workspace/outputs
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+
+services:
+  ingest:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: ingest_video, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8001:8000"]
+  frames:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: video2png, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8002:8000"]
+  pose:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: eye_pose_mp, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8003:8000"]
+  composition:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: eye_composition_cv2, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8004:8000"]
+  meaning:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: eye_meaning_vlm, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8005:8000"]
+  stt:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: ear_stt_whisper, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8006:8000"]
+  storyboard:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: hand_storyboard_builder, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8007:8000"]
+  render:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: paper_html_svg, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8008:8000"]
+  validate:
+    <<: *worker
+    environment: {PYTHONPATH: /app/src, WORKER: validate_storyboard, LM_STUDIO_BASE_URL: http://host.docker.internal:1234/v1, VIDEO2STORYBOARD_VLM_MODEL: ${VIDEO2STORYBOARD_VLM_MODEL:-}}
+    ports: ["8009:8000"]
