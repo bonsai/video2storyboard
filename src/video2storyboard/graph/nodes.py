@@ -99,12 +99,22 @@ def eye_pose_mp(state: VideoState) -> VideoState:
                 result = pose.process(rgb)
                 landmarks = None
                 if result.pose_landmarks:
-                    landmarks = [{"name": pose_api.PoseLandmark(i).name,
+                    landmarks = [{"index": i, "name": pose_api.PoseLandmark(i).name,
                                   "x": float(p.x), "y": float(p.y), "z": float(p.z),
                                   "visibility": float(p.visibility)}
                                  for i, p in enumerate(result.pose_landmarks.landmark)]
-                results.append({"frame_id": frame["frame_id"], "timestamp_seconds": frame["timestamp_seconds"],
-                                "status": "detected" if landmarks else "not_detected", "landmarks": landmarks})
+                record = {"frame_id": frame["frame_id"], "timestamp_seconds": frame["timestamp_seconds"],
+                          "status": "detected" if landmarks else "not_detected", "landmarks": landmarks}
+                if landmarks:
+                    try:
+                        from ..pose_render import render_pose_artifacts
+                        overlay_dir = Path(state.get("output_dir", "outputs")) / state.get("run_id", "run") / "pose-overlays"
+                        record.update(render_pose_artifacts(image, landmarks, pose_api.POSE_CONNECTIONS,
+                                                            overlay_dir, frame["frame_id"]))
+                    except Exception as render_exc:
+                        # Keep successful landmarks even if visual export fails.
+                        record["overlay_error"] = str(render_exc)
+                results.append(record)
         return {"pose_results": results}
     except Exception as exc:
         return {"pose_results": [], "errors": _error(state, "eye_pose_mp", f"MediaPipe unavailable/failed: {exc}")}
