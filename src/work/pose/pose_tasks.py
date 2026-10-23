@@ -175,3 +175,44 @@ def get_landmark_name(index: int) -> str:
     if 0 <= index < len(_POSE_LANDMARK_NAMES):
         return _POSE_LANDMARK_NAMES[index]
     return f"LANDMARK_{index}"
+
+
+
+# Public helpers for the dedicated graph worker. Keep the legacy wrapper above
+# available while the graph implementation is split into smaller modules.
+import mediapipe as mp
+from mediapipe.tasks.python.vision import RunningMode
+
+
+def create_pose_landmarker(*, running_mode=RunningMode.IMAGE, num_poses: int = 1):
+    """Create a Tasks API PoseLandmarker; the caller owns and closes it."""
+    options = PoseLandmarkerOptions(
+        base_options=BaseOptions(model_asset_path=_TasksPose._resolve_model_path()),
+        running_mode=running_mode,
+        num_poses=num_poses,
+        min_pose_detection_confidence=0.5,
+        min_pose_presence_confidence=0.5,
+        min_tracking_confidence=0.5,
+    )
+    return PoseLandmarker.create_from_options(options)
+
+
+def pose_connections() -> list[tuple[int, int]]:
+    """Return landmark connections as plain integer pairs."""
+    return list(_POSE_CONNECTIONS)
+
+
+def landmarks_to_records(landmarks) -> list[dict[str, Any]]:
+    """Convert normalized Tasks landmarks to the stable JSON record shape."""
+    return [
+        {
+            "index": index,
+            "name": get_landmark_name(index),
+            "x": float(point.x),
+            "y": float(point.y),
+            "z": float(point.z),
+            "visibility": float(getattr(point, "visibility", 1.0)),
+            "presence": float(getattr(point, "presence", 1.0)),
+        }
+        for index, point in enumerate(landmarks)
+    ]
