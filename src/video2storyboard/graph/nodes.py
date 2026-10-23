@@ -185,7 +185,7 @@ def hand_storyboard_builder(state: VideoState) -> VideoState:
             "panel_id": f"panel-{len(panels) + 1:04d}",
             "frame_id": fid,
             "timestamp_seconds": frame["timestamp_seconds"],
-            "image": os.path.relpath(frame["image"], Path(state.get("output_dir", "outputs"))),
+            "image": os.path.relpath(frame["image"], Path(state.get("output_dir", "outputs")) / state.get("run_id", "run")),
             "visual": {"pose": pose.get(fid), "composition": composition.get(fid),
                        "meaning": meaning.get(fid)},
             "audio": [s for s in state.get("transcript_segments", [])
