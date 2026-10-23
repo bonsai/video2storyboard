@@ -79,7 +79,6 @@ def run_webcam(camera_index: int = 0, mirror: bool = True) -> None:
                 timestamp_ms += 33
                 if result.pose_landmarks:
                     records = landmarks_to_records(result.pose_landmarks[0])
-                    render_pose_artifacts(frame, records, pose_connections(), Path.cwd() / ".pose-preview", "live")
                     # Draw directly into the displayed frame; no files are needed for the preview.
                     points = {
                         int(item["index"]): (round(item["x"] * (frame.shape[1] - 1)),
