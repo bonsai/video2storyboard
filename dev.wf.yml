@@ -1,119 +1,190 @@
-name: dev
+schema_version: "1.0"
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
+workflow:
+  id: dev
+  name: Standalone dance pipeline development
+  status: specification
+  purpose: >
+    Develop and verify the video-to-pose and pose-to-character pipelines
+    independently before adding LangGraph orchestration.
+  orchestration:
+    engine: manual
+    langgraph: deferred
+    rule: "Each step must be runnable and testable on its own."
 
-permissions:
-  contents: read
+defaults:
+  execution: local
+  cloud_fallback: false
+  upload_source_media: false
+  prefer_existing_libraries: true
+  survey_before_custom_implementation: true
+  allow_polyglot: true
+  interchange_format: json
 
-concurrency:
-  group: dev-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+source:
+  video_url: "https://www.youtube.com/watch?v=U6dnieqgYvI"
+  timeline_file: "timelines.yaml"
+  segment_id: skeleton_dance
+  interval:
+    start: "00:02:20"
+    end: "00:03:45"
+    start_inclusive: true
+    end_inclusive: false
+  preserve_source_timestamps: true
 
-jobs:
-  validate-contracts:
-    name: Validate YAML and JSON contracts
-    runs-on: ubuntu-latest
+pipelines:
+  - id: source_pose_overlay
+    name: Source video to pose JSON and browser overlay
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - id: survey_media_tools
+        action: survey
+        purpose: "Compare existing video/frame extraction, pose, JSON validation, SVG, and browser tooling."
+        outputs:
+          - "survey/pylib.md"
+        gate:
+          require_sources_and_tradeoffs: true
+          do_not_implement_plugin_before_survey: true
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - id: extract_stills
+        action: extract_frames
+        input: source.video_url
+        output:
+          directory: "outputs/dev/frames"
+          format: png
+          include:
+            - frame_id
+            - source_timestamp
+        constraints:
+          - "Use only frames in source.interval."
+          - "Include the start boundary and exclude the end boundary."
 
-      - name: Install validation tools
-        run: python -m pip install --upgrade pip pyyaml jsonschema
+      - id: estimate_pose
+        action: pose_estimation
+        implementation:
+          preferred_existing_project: MediaPipe
+          language: python
+          language_is_mandatory: false
+        input:
+          format: png
+          directory: "outputs/dev/frames"
+        output:
+          format: json
+          path: "outputs/dev/pose.json"
+          schema: "schemas/pose.schema.json"
+        constraints:
+          - "Infer from still PNG files, not a direct video stream."
+          - "Retain source timestamp and frame ID."
+          - "Record no-pose and processing-error states explicitly."
 
-      - name: Parse YAML configuration files
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import yaml
+      - id: render_pose_svg
+        action: render
+        input: "outputs/dev/pose.json"
+        output:
+          format: svg
+          directory: "outputs/dev/overlays"
+        constraints:
+          - "Render from JSON; do not rerun pose inference."
+          - "Document coordinate convention and image dimensions."
 
-          paths = sorted(Path(".").rglob("*.yaml")) + sorted(Path(".").rglob("*.yml"))
-          paths = [
-              p for p in paths
-              if ".git" not in p.parts
-              and ".venv" not in p.parts
-              and "node_modules" not in p.parts
-          ]
-          errors = []
-          for path in paths:
-              try:
-                  with path.open(encoding="utf-8") as f:
-                      list(yaml.safe_load_all(f))
-                  print(f"OK {path}")
-              except Exception as exc:
-                  errors.append((path, exc))
-          if errors:
-              for path, exc in errors:
-                  print(f"ERROR {path}: {exc}")
-              raise SystemExit(1)
-          print(f"Validated {len(paths)} YAML files.")
-          PY
+      - id: browser_overlay
+        action: browser_composite
+        input:
+          frames: "outputs/dev/frames"
+          overlays: "outputs/dev/overlays"
+        output:
+          directory: "outputs/dev/composite"
+          format: png
+        acceptance:
+          - "Overlay is aligned to the matching source frame."
+          - "Video time and overlay time remain synchronized."
 
-  python-tests:
-    name: Run Python tests (when available)
-    runs-on: ubuntu-latest
+      - id: assemble_animation
+        action: assemble_video
+        enabled: false
+        input: "outputs/dev/composite"
+        output:
+          path: "outputs/dev/dance-overlay.mp4"
+          format: mp4
+        enable_when:
+          - "Browser overlay has been visually verified."
+          - "Frame ordering and timestamp alignment tests pass."
+
+  - id: character_retargeting
+    name: Dance JSON to a different 3D character
+    depends_on:
+      - source_pose_overlay.estimate_pose
+    status: planned
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - id: survey_free_character_models
+        action: survey
+        outputs:
+          - "survey/character-models.md"
+        compare:
+          - license_and_attribution
+          - redistribution_rights
+          - rig_and_skeleton
+          - file_format
+          - retargeting_compatibility
+          - local_rendering_support
+        gate:
+          verify_license_before_use: true
+          prefer_existing_free_model: true
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - id: retarget_motion
+        action: retarget
+        input: "outputs/dev/pose.json"
+        model_manifest: "config/character-model.yaml"
+        output:
+          path: "outputs/dev/character-animation"
+        constraints:
+          - "Map pose landmarks to the target rig explicitly."
+          - "Keep source and target coordinate systems distinct."
+          - "Start with a short reproducible sample."
 
-      - name: Install project dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            python -m pip install -r requirements.txt
-          fi
-          python -m pip install pytest
+      - id: render_character
+        action: render
+        enabled: false
+        input: "outputs/dev/character-animation"
+        output:
+          path: "outputs/dev/character-dance.mp4"
+          format: mp4
+        enable_when:
+          - "A license-verified model has been selected."
+          - "Retargeting is validated on a short clip."
 
-      - name: Run tests
-        env:
-          PYTHONPATH: src
-        run: |
-          if [ -d tests ] && find tests -type f \( -name 'test_*.py' -o -name '*_test.py' \) | grep -q .; then
-            python -m pytest -q
-          else
-            echo "No Python tests found; skipping pytest."
-          fi
+quality_gates:
+  - id: json_contract
+    checks:
+      - "Versioned JSON schema exists and validates output."
+      - "Source timestamp, frame ID, dimensions, and coordinate convention are present."
+      - "Image coordinates and 3D world coordinates are not mixed."
+      - "No-pose and error states are represented."
 
-  browser-poc:
-    name: Check browser PoC assets (when available)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  - id: timeline_boundaries
+    checks:
+      - "00:02:20 is included."
+      - "00:03:45 is excluded."
+      - "Frames outside the selected segment never reach pose inference."
 
-      - name: Check for package manifest
-        id: manifest
-        shell: bash
-        run: |
-          if [ -f package.json ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No package.json yet; browser build check is deferred."
-          fi
+  - id: tests
+    checks:
+      - "Valid pose result"
+      - "No pose detected"
+      - "Unreadable PNG"
+      - "Missing timeline configuration fails closed"
+      - "SVG alignment and frame ordering"
 
-      - name: Set up Node
-        if: steps.manifest.outputs.exists == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
+  - id: implementation_policy
+    checks:
+      - "Survey existing libraries/projects before custom implementation."
+      - "Rust or other languages may be selected if evidence supports the choice."
+      - "New dependencies and custom code require documented justification."
+      - "This YAML is a specification; runtime enforcement requires implementation and tests."
 
-      - name: Install and build browser assets
-        if: steps.manifest.outputs.exists == 'true'
-        run: |
-          npm ci
-          npm run build --if-present
+later:
+  langgraph:
+    enabled: false
+    enable_when:
+      - "Pipeline 1 stages have stable contracts and repeatable tests."
+      - "Pipeline 2 has a license-verified model and a validated short-clip result."
+    integration_rule: "Wrap proven standalone steps as nodes; do not redesign the steps solely for orchestration."
