@@ -1,0 +1,50 @@
+@startuml animate-stick-figure-structure
+title animate_stick_figure.py — Structure
+left to right direction
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+actor "Developer / User" as User
+package "CLI: main()" {
+  [argparse\n--input-jsonl\n--output-html\n--title] as CLI
+  [Path validation] as Validate
+}
+package "Data processing" {
+  [load_jsonl(path)] as Load
+  [json.loads per line] as Parse
+  [landmark_map(record)] as Normalize
+  [timestamp sort] as Sort
+}
+package "HTML generation" {
+  [make_html(frames, title)] as HTML
+  [JSON serialization\nframes + CONNECTIONS] as Serialize
+  [HTML template\nCSS + Canvas + JS] as Template
+}
+database "Input JSONL\n(read-only)" as Input
+file "Output HTML\n(local standalone file)" as Output
+cloud "External network" as Network
+
+User --> CLI : command line
+CLI --> Validate : resolve paths
+Validate --> Input : verify exists
+Validate --> Load : valid input
+Load --> Input : read UTF-8 lines
+Load --> Parse
+Parse --> Normalize : each frame record
+Normalize --> Sort : normalized landmarks
+Sort --> HTML : timestamped frames
+HTML --> Serialize
+Serialize --> Template
+Template --> Output : write_text(UTF-8)
+User --> Output : open in browser
+Network -[hidden]-> Output
+note right of Output
+Generated page embeds the frame data.
+Browser playback uses Canvas and requestAnimationFrame.
+No HTTP calls or uploads are implemented.
+end note
+note bottom of Normalize
+Invalid landmark entries are skipped.
+x/y are clamped to 0..1.
+end note
+@enduml
