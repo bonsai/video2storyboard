@@ -3,7 +3,8 @@
 This folder contains canonical design rules for `video2storyboard`.
 
 - [Design Principles](design-principles.md) — 15 architecture and engineering principles; currently Draft.
-- [Plugin Catalog](plugin-catalog.yaml) — proposed 15-plugin catalog, grouped into four domains, including responsibilities and I/O contracts.
+- [Plugin Catalog](plugin-catalog.yaml) — proposed 16-plugin catalog, grouped into four domains, including responsibilities and I/O contracts.
+- [Plugin 16: slot](plugins/slot.md) — layout-slot definitions and deterministic assignments; design proposal only.
 
 ## Authority
 
