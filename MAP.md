@@ -40,6 +40,10 @@ Both diagram formats are maintained side by side:
 - Structure (PlantUML): [animate-stick-figure-structure.puml](docs/diagrams/animate-stick-figure-structure.puml)
 - Event flow (SVG): [animate-stick-figure-events.svg](docs/diagrams/animate-stick-figure-events.svg)
 - Event flow (PlantUML): [animate-stick-figure-events.puml](docs/diagrams/animate-stick-figure-events.puml)
+- Class diagram (SVG): [animate-stick-figure-class.svg](docs/diagrams/animate-stick-figure-class.svg)
+- Class diagram (PlantUML): [animate-stick-figure-class.puml](docs/diagrams/animate-stick-figure-class.puml)
+- Use case diagram (SVG): [animate-stick-figure-use-cases.svg](docs/diagrams/animate-stick-figure-use-cases.svg)
+- Use case diagram (PlantUML): [animate-stick-figure-use-cases.puml](docs/diagrams/animate-stick-figure-use-cases.puml)
 
 The SVG files are directly viewable in GitHub; the PUML files are editable source diagrams. Keep each pair conceptually aligned when changing the script.
 
