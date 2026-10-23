@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850" role="img" aria-labelledby="title desc">
+<title id="title">animate_stick_figure.py — Class and Module Diagram</title>
+<desc id="desc">Module and data relationships from CLI and JSONL loader through HTML builder to browser playback classes.</desc>
+<defs><marker id="arr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#475467"/></marker><style>
+text{font-family:Inter,Segoe UI,Arial,sans-serif;fill:#101828}.h{font-size:25px;font-weight:700}.sub{font-size:14px;fill:#475467}.box{fill:#fff;stroke:#6172f3;stroke-width:1.5}.head{fill:#eef4ff;stroke:#6172f3;stroke-width:1.5}.name{font-size:16px;font-weight:700}.tag{font-size:12px;fill:#475467}.member{font-size:13px}.rel{stroke:#475467;stroke-width:1.6;fill:none;marker-end:url(#arr)}.dash{stroke-dasharray:6 5}.label{font-size:12px;fill:#344054}.note{fill:#fffaeb;stroke:#fdb022;stroke-width:1.2}.noteText{font-size:13px}
+</style></defs>
+<rect width="1200" height="850" fill="#fff"/>
+<text class="h" x="36" y="44">animate_stick_figure.py — Class / Module Diagram</text>
+<text class="sub" x="36" y="69">Conceptual responsibility map for the current script and generated browser player</text>
+<rect x="25" y="95" width="555" height="560" rx="14" fill="#f8faff" stroke="#d0d5dd"/>
+<text class="name" x="45" y="125">Python generator · scripts/animate_stick_figure.py</text>
+<rect class="head" x="55" y="155" width="220" height="46" rx="5"/><text class="name" x="165" y="183" text-anchor="middle">CLI / main()</text>
+<rect class="box" x="55" y="235" width="220" height="126" rx="5"/><rect class="head" x="55" y="235" width="220" height="36" rx="5"/><text class="name" x="165" y="258" text-anchor="middle">JSONLLoader</text>
+<text class="member" x="68" y="292">+ load_jsonl(path)</text><text class="member" x="68" y="316">− normalize_landmark(item)</text><text class="member" x="68" y="340">Sort frames by timestamp</text>
+<rect class="box" x="320" y="235" width="230" height="126" rx="5"/><rect class="head" x="320" y="235" width="230" height="36" rx="5"/><text class="name" x="435" y="258" text-anchor="middle">HTMLBuilder</text>
+<text class="member" x="333" y="292">+ make_html(frames, title)</text><text class="member" x="333" y="316">− landmark_map(frame)</text><text class="member" x="333" y="340">Serialize data + template</text>
+<rect class="box" x="55" y="410" width="220" height="112" rx="5"/><rect class="head" x="55" y="410" width="220" height="36" rx="5"/><text class="name" x="165" y="433" text-anchor="middle">Frame</text><text class="member" x="68" y="468">frame_id : str</text><text class="member" x="68" y="490">timestamp_ms : number</text><text class="member" x="68" y="512">landmarks : list</text>
+<rect class="box" x="320" y="410" width="230" height="112" rx="5"/><rect class="head" x="320" y="410" width="230" height="36" rx="5"/><text class="name" x="435" y="433" text-anchor="middle">Landmark</text><text class="member" x="333" y="468">index : int</text><text class="member" x="333" y="490">x, y : normalized number</text><text class="member" x="333" y="512">visibility : number</text>
+<path class="rel" d="M165 201V235"/><text class="label" x="176" y="221">calls</text><path class="rel" d="M275 280H320"/><text class="label" x="282" y="270">frames</text><path class="rel dash" d="M165 361V410"/><path class="rel dash" d="M435 361V410"/><path class="rel" d="M275 466H320"/><text class="label" x="282" y="455">contains</text>
+<rect x="610" y="95" width="565" height="560" rx="14" fill="#f8fffb" stroke="#d0d5dd"/>
+<text class="name" x="630" y="125">Generated standalone HTML · browser runtime</text>
+<rect class="head" x="650" y="165" width="220" height="46" rx="5"/><text class="name" x="760" y="193" text-anchor="middle">PlayerUI</text>
+<text class="member" x="660" y="235">play() · pause() · restart()</text><text class="member" x="660" y="258">seek(timestamp) · setSpeed(rate)</text>
+<rect class="head" x="910" y="165" width="220" height="46" rx="5"/><text class="name" x="1020" y="193" text-anchor="middle">FrameClock</text>
+<text class="member" x="920" y="235">currentTime()</text><text class="member" x="920" y="258">nearestFrame(timestamp)</text>
+<rect class="head" x="780" y="340" width="220" height="46" rx="5"/><text class="name" x="890" y="368" text-anchor="middle">CanvasRenderer</text>
+<text class="member" x="790" y="410">drawFrame(frame)</text><text class="member" x="790" y="433">drawConnections()</text>
+<path class="rel" d="M870 188H910"/><text class="label" x="876" y="178">timeline</text><path class="rel" d="M760 211V340"/><text class="label" x="771" y="290">redraw</text><path class="rel" d="M1020 258V305H890V340"/><text class="label" x="930" y="297">selected frame</text>
+<path class="rel dash" d="M550 300H590V700H760V386"/><text class="label" x="596" y="685">HTML template defines runtime</text>
+<rect class="note" x="40" y="705" width="520" height="92" rx="8"/><text class="noteText" x="58" y="731">Input JSONL is read-only. Path validation prevents</text><text class="noteText" x="58" y="753">the output HTML from overwriting the input file.</text><text class="noteText" x="58" y="775">Frame and Landmark are data shapes, not runtime classes.</text>
+<rect class="note" x="620" y="705" width="550" height="92" rx="8"/><text class="noteText" x="638" y="731">The browser runtime is JavaScript embedded in generated HTML,</text><text class="noteText" x="638" y="753">not Python classes. The page runs locally without network calls.</text><text class="noteText" x="638" y="775">Current scope renders existing timestamped Pose JSONL only.</text>
+</svg>
