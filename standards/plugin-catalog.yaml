@@ -1,7 +1,7 @@
 schema_version: "1.0"
 status: draft
 scope: video2storyboard
-target_plugin_count: 15
+target_plugin_count: 16
 orchestrator: langgraph
 configuration: yaml
 canonical_storyboard_format: json
@@ -67,7 +67,7 @@ domains:
         outputs: [temporal_events]
 
   - id: storyboard_generation
-    title: Storyboard generation
+    title: Storyboard generation and layout
     plugins:
       - id: storyboard
         responsibility: Build the canonical storyboard document from analysis outputs.
@@ -81,17 +81,26 @@ domains:
         responsibility: Support human inspection, correction, and approval.
         inputs: [annotated_storyboard]
         outputs: [reviewed_storyboard, review_decisions]
+      - id: slot
+        responsibility: Define storyboard layout slots and assign stable scene, shot, frame, or annotation references to them.
+        inputs: [storyboard_json, scenes, frames, temporal_events, slot_layout_config]
+        outputs: [slot_layout, slot_assignments]
+        rules:
+          preserve_storyboard_ids: true
+          preserve_source_timestamps: true
+          deterministic_assignments: true
+          report_unresolved_references: true
 
   - id: output_quality
     title: Output and quality
     plugins:
       - id: export
         responsibility: Export approved storyboard and overlay artifacts.
-        inputs: [reviewed_storyboard]
+        inputs: [reviewed_storyboard, slot_layout, slot_assignments]
         outputs: [exported_artifacts]
       - id: validation
         responsibility: Validate schemas, timeline consistency, and artifact references.
-        inputs: [reviewed_storyboard, exported_artifacts]
+        inputs: [reviewed_storyboard, exported_artifacts, slot_assignments]
         outputs: [validation_report]
       - id: evaluation
         responsibility: Compare outputs against reference data and report quality metrics.
@@ -115,6 +124,7 @@ shared_contract:
     must_not_be_silently_swallowed: true
 
 notes:
-  - This is a design catalog, not a claim that all 15 plugins are implemented.
+  - This is a design catalog, not a claim that all 16 plugins are implemented.
+  - Slot is a layout and assignment capability, not a second storyboard generator.
   - Plugin boundaries and dependencies must be reviewed against the current graph before implementation.
   - Avoid making every plugin a separate service; start as modules behind stable contracts.
