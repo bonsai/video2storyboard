@@ -83,41 +83,10 @@ def video2png(state: VideoState) -> VideoState:
 
 
 def eye_pose_mp(state: VideoState) -> VideoState:
-    try:
-        import cv2
-        import mediapipe as mp
-        results = []
-        pose_api = mp.solutions.pose
-        with pose_api.Pose(static_image_mode=True, model_complexity=1) as pose:
-            for frame in state.get("frames", []):
-                image = cv2.imread(frame["image"])
-                if image is None:
-                    results.append({"frame_id": frame["frame_id"], "timestamp_seconds": frame["timestamp_seconds"],
-                                    "status": "unreadable_image", "landmarks": None})
-                    continue
-                rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                result = pose.process(rgb)
-                landmarks = None
-                if result.pose_landmarks:
-                    landmarks = [{"index": i, "name": pose_api.PoseLandmark(i).name,
-                                  "x": float(p.x), "y": float(p.y), "z": float(p.z),
-                                  "visibility": float(p.visibility)}
-                                 for i, p in enumerate(result.pose_landmarks.landmark)]
-                record = {"frame_id": frame["frame_id"], "timestamp_seconds": frame["timestamp_seconds"],
-                          "status": "detected" if landmarks else "not_detected", "landmarks": landmarks}
-                if landmarks:
-                    try:
-                        from ..pose_render import render_pose_artifacts
-                        overlay_dir = Path(state.get("output_dir", "outputs")) / state.get("run_id", "run") / "pose-overlays"
-                        record.update(render_pose_artifacts(image, landmarks, pose_api.POSE_CONNECTIONS,
-                                                            overlay_dir, frame["frame_id"]))
-                    except Exception as render_exc:
-                        # Keep successful landmarks even if visual export fails.
-                        record["overlay_error"] = str(render_exc)
-                results.append(record)
-        return {"pose_results": results}
-    except Exception as exc:
-        return {"pose_results": [], "errors": _error(state, "eye_pose_mp", f"MediaPipe unavailable/failed: {exc}")}
+    """Delegate pose inference to the MediaPipe Tasks API implementation."""
+    from .tasks_nodes import eye_pose_mp as tasks_eye_pose_mp
+
+    return tasks_eye_pose_mp(state)
 
 
 def eye_composition_cv2(state: VideoState) -> VideoState:
