@@ -1,0 +1,70 @@
+@startuml animate-stick-figure-class
+title animate_stick_figure.py — Class / Module Diagram
+left to right direction
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "scripts/animate_stick_figure.py" {
+  class CLI <<module>> {
+    +main()
+    -parse_args()
+    -validate_paths()
+  }
+  class JSONLLoader <<module>> {
+    +load_jsonl(path) : list[Frame]
+    -normalize_landmark(item) : Landmark
+  }
+  class HTMLBuilder <<module>> {
+    +make_html(frames, title) : str
+    -landmark_map(frame) : dict
+    -serialize_frames(frames) : str
+  }
+  class Frame <<data>> {
+    +frame_id : str
+    +timestamp_ms : number
+    +landmarks : list[Landmark]
+  }
+  class Landmark <<data>> {
+    +index : int
+    +x : number
+    +y : number
+    +visibility : number
+  }
+}
+
+package "Generated standalone HTML" {
+  class PlayerUI <<browser>> {
+    +play()
+    +pause()
+    +restart()
+    +seek(timestamp)
+    +setSpeed(rate)
+  }
+  class CanvasRenderer <<browser>> {
+    +drawFrame(frame)
+    +drawConnections()
+  }
+  class FrameClock <<browser>> {
+    +currentTime() : number
+    +nearestFrame(timestamp) : Frame
+  }
+}
+
+CLI ..> JSONLLoader : loads JSONL
+CLI ..> HTMLBuilder : builds HTML
+JSONLLoader ..> Frame : creates
+Frame "1" *-- "0..33" Landmark : contains
+HTMLBuilder ..> Frame : serializes
+PlayerUI --> FrameClock : controls timeline
+PlayerUI --> CanvasRenderer : requests redraw
+FrameClock ..> Frame : selects
+CanvasRenderer ..> Frame : draws
+
+note bottom of CLI
+Input media/JSONL is read-only.
+Output HTML must not overwrite input.
+end note
+note bottom of PlayerUI
+Standalone page; no network requests.
+end note
+@enduml
