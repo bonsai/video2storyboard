@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Visual navigation map for video2storyboard: local pose extraction, contracts, stick-figure playback, and diagrams.">
+<title>MAP — video2storyboard</title>
+<style>
+:root{color-scheme:light dark;--bg:#0b1020;--panel:#131b2e;--panel2:#19243a;--text:#edf2ff;--muted:#aab7d1;--line:#34435e;--accent:#82b7ff;--good:#91dfc2}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top left,#172747 0,transparent 45%),var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accent);text-underline-offset:3px}a:hover{color:#c4dcff}header,main,footer{max-width:1120px;margin:auto;padding:24px}
+header{padding-top:44px;padding-bottom:16px}.eyebrow{color:var(--good);font-size:.8rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+h1{font-size:clamp(2rem,5vw,3.5rem);line-height:1.05;margin:.45rem 0 1rem}h2{font-size:1.25rem;margin:0 0 12px}p{margin:.35rem 0 1rem}.muted{color:var(--muted)}.lead{font-size:1.1rem;max-width:760px}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}nav a,.tag{border:1px solid var(--line);border-radius:999px;padding:6px 12px;text-decoration:none;font-size:.9rem}
+section{margin:26px 0;scroll-margin-top:16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:14px}
+.card{background:linear-gradient(145deg,var(--panel),#101729);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+.card p{color:var(--muted);font-size:.95rem}.card h3{font-size:1.05rem;margin:0 0 6px}.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.pill{display:inline-block;background:var(--panel2);border-radius:7px;padding:3px 8px;font-size:.78rem;color:var(--good);margin-bottom:8px}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:stretch}.step{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);text-align:center}.arrow{color:var(--accent);font-size:1.4rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{overflow-wrap:anywhere;background:var(--panel2);padding:2px 5px;border-radius:5px}
+.note{border-left:3px solid var(--good);padding:10px 14px;background:var(--panel);border-radius:0 10px 10px 0}.diagram img{width:100%;height:auto;display:block;background:#fff;border-radius:8px;margin-top:12px}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:.88rem}
+@media(max-width:640px){header,main,footer{padding:18px}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Project map · local-first workflow</div>
+  <h1>video2storyboard</h1>
+  <p class="lead">A navigable overview of the local video → pose data → stick-figure playback workflow, its contracts, and its design diagrams.</p>
+  <p class="muted">Branch: <code>feat/local-stick-figure-dance</code> · Source media stays local and unchanged.</p>
+  <nav aria-label="Map sections">
+    <a href="#workflow">Workflow</a><a href="#contracts">Contracts &amp; units</a><a href="#playback">Stick-figure playback</a><a href="#diagrams">Diagrams</a><a href="#safety">Safety &amp; status</a><a href="MAP.md">MAP.md</a>
+  </nav>
+</header>
+<main>
+<section id="workflow">
+  <h2>1. Workflow at a glance</h2>
+  <div class="flow" aria-label="Workflow steps">
+    <div class="step"><strong>Read frames</strong><br><span class="muted">Local video input</span></div><div class="step"><span class="arrow">→</span><br><strong>Estimate pose</strong><br><span class="muted">MediaPipe landmarks</span></div><div class="step"><span class="arrow">→</span><br><strong>Save pose data</strong><br><span class="muted">JSON / JSONL</span></div><div class="step"><span class="arrow">→</span><br><strong>Playback</strong><br><span class="muted">Standalone HTML canvas</span></div>
+  </div>
+  <p class="muted">The current stick-figure script consumes existing timestamped Pose JSONL; it does not extract landmarks from video itself.</p>
+</section>
+<section id="contracts">
+  <h2>2. Canonical contracts and project structure</h2>
+  <div class="grid">
+    <article class="card"><span class="pill">Workflow</span><h3><code>wf/</code></h3><p>Defines pipeline topology, stages, edges, and gates.</p><div class="links"><a href="wf/dev.wf.yml">dev.wf.yml</a><a href="wf/pose.wf.yml">pose.wf.yml</a></div></article>
+    <article class="card"><span class="pill">Agent roles</span><h3><code>aw/</code></h3><p>Defines agent responsibilities and separation of duties.</p><div class="links"><a href="aw/pose.aw.yaml">pose.aw.yaml</a></div></article>
+    <article class="card"><span class="pill">API contract</span><h3><code>openapi/</code></h3><p>Defines the pose request/response interface.</p><div class="links"><a href="openapi/pose.yaml">pose.yaml</a></div></article>
+    <article class="card"><span class="pill">Validation</span><h3><code>contracts/</code></h3><p>Machine-readable schema for saved Pose artifacts.</p><div class="links"><a href="contracts/pose-artifact.schema.json">pose-artifact.schema.json</a></div></article>
+    <article class="card"><span class="pill">Reusable unit</span><h3><code>units/pose/</code></h3><p>Acceptance and reuse notes for the isolated pose unit.</p><div class="links"><a href="units/pose/README.md">Unit README</a></div></article>
+    <article class="card"><span class="pill">Implementation</span><h3><code>src/</code> and <code>tests/</code></h3><p>Existing pose overlay/render modules and regression/contract tests.</p><div class="links"><a href="src/video2storyboard/">Source directory</a><a href="tests/">Tests directory</a></div></article>
+  </div>
+</section>
+<section id="playback">
+  <h2>3. Stick-figure playback</h2>
+  <div class="grid">
+    <article class="card"><span class="pill">Python · standard library</span><h3><code>animate_stick_figure.py</code></h3><p>Reads timestamped JSONL, validates/sorts frames, and emits a self-contained HTML animation.</p><div class="links"><a href="scripts/animate_stick_figure.py">View script</a></div></article>
+    <article class="card"><span class="pill">Output</span><h3>Standalone HTML</h3><p>Canvas-based stick figure with play/pause, restart, speed, seek, and timestamp display. Open the generated file locally in a browser.</p></article>
+    <article class="card"><span class="pill">Handover</span><h3>Next validation step</h3><p>Run with a representative timestamped Pose JSONL, inspect playback, then compare it against source frames.</p><div class="links"><a href="docs/PLAN-TOMORROW.md">Handover plan</a></div></article>
+  </div>
+</section>
+<section id="diagrams">
+  <h2>4. Design diagrams</h2>
+  <p class="muted">Each diagram has a viewable SVG and editable PlantUML source. Keep both formats aligned when the script changes.</p>
+  <div class="grid">
+    <article class="card diagram"><h3>Structure</h3><p>Files and major responsibilities.</p><div class="links"><a href="docs/diagrams/animate-stick-figure-structure.svg">Open SVG</a><a href="docs/diagrams/animate-stick-figure-structure.puml">PlantUML source</a></div><a href="docs/diagrams/animate-stick-figure-structure.svg"><img src="docs/diagrams/animate-stick-figure-structure.svg" alt="Stick figure playback structure diagram" loading="lazy"></a></article>
+    <article class="card diagram"><h3>Event flow</h3><p>Playback events and state transitions.</p><div class="links"><a href="docs/diagrams/animate-stick-figure-events.svg">Open SVG</a><a href="docs/diagrams/animate-stick-figure-events.puml">PlantUML source</a></div><a href="docs/diagrams/animate-stick-figure-events.svg"><img src="docs/diagrams/animate-stick-figure-events.svg" alt="Stick figure playback event flow diagram" loading="lazy"></a></article>
+    <article class="card diagram"><h3>Class diagram</h3><p>Logical classes and responsibilities.</p><div class="links"><a href="docs/diagrams/animate-stick-figure-class.svg">Open SVG</a><a href="docs/diagrams/animate-stick-figure-class.puml">PlantUML source</a></div><a href="docs/diagrams/animate-stick-figure-class.svg"><img src="docs/diagrams/animate-stick-figure-class.svg" alt="Stick figure playback class diagram" loading="lazy"></a></article>
+    <article class="card diagram"><h3>Use cases</h3><p>User actions supported by the playback page.</p><div class="links"><a href="docs/diagrams/animate-stick-figure-use-cases.svg">Open SVG</a><a href="docs/diagrams/animate-stick-figure-use-cases.puml">PlantUML source</a></div><a href="docs/diagrams/animate-stick-figure-use-cases.svg"><img src="docs/diagrams/animate-stick-figure-use-cases.svg" alt="Stick figure playback use case diagram" loading="lazy"></a></article>
+  </div>
+</section>
+<section id="safety">
+  <h2>5. Safety and current validation status</h2>
+  <div class="note"><strong>Local-first by default.</strong> Keep source media immutable, do not upload it by default, and write generated outputs under <code>artifacts/</code>. Check each CLI's <code>--help</code> before running.</div>
+  <ul>
+    <li>Playback generation is separate from video landmark extraction.</li>
+    <li>Use real local inputs and focused artifact checks to establish end-to-end success.</li>
+    <li>PlantUML rendering and automatic diagram consistency checks have not yet been verified.</li>
+  </ul>
+</section>
+</main>
+<footer>
+  <p>Project navigation companion to <a href="MAP.md">MAP.md</a>. Links are relative to the repository root, so the page can be browsed from the repository or a static-site deployment.</p>
+</footer>
+</body>
+</html>
