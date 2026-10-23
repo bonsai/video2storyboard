@@ -1,0 +1,49 @@
+# Workflow for Pipeline 1: source video -> layered dance animation
+# Issue #15 (standalone pipelines) / Issue #25 (IR integration)
+name: pipeline1_source_video_to_dance
+version: "1.0"
+description: >-
+  Standalone Pipeline 1: video → PNG frames → MediaPipe Pose JSON/SVG overlay
+  → versioned IR. No LangGraph required (standalone policy).
+
+stages:
+  - id: ingest_video
+    type: worker
+    worker: video2storyboard:ingest_video
+    inputs: []
+    outputs: ["source_sha256", "source_id", "metadata"]
+    description: Extract source video metadata.
+
+  - id: video2png
+    type: worker
+    worker: video2storyboard:video2png
+    inputs: ["source_video"]
+    outputs: ["frames"]
+    description: Extract timestamped PNG frames.
+
+  - id: eye_pose_mp
+    type: worker
+    worker: video2storyboard:eye_pose_mp
+    inputs: ["frames"]
+    outputs: ["pose_results"]
+    description: MediaPipe Pose estimation + overlay.
+
+  - id: validate_dance_ir
+    type: worker
+    worker: video2storyboard:validate_dance_ir
+    inputs: ["pose_results", "frames"]
+    outputs: ["dance_ir"]
+
+steps:
+  - id: ingest
+    type: ingest_video
+    action: extract_metadata
+  - id: frames
+    type: video2png
+    action: extract_frames
+  - id: pose
+    type: eye_pose_mp
+    action: estimate_pose_and_overlay
+  - id: validate
+    type: validate_dance_ir
+    action: validate_ir

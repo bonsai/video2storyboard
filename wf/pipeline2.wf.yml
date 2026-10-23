@@ -1,0 +1,27 @@
+# Workflow for Pipeline 2: dance data → 3D character retarget (VTuber)
+# Issue #15 (standalone pipelines) / Issue #24 (VTuber animation)
+name: pipeline2_dance_to_vtuber
+version: "1.0"
+description: >-
+  Standalone Pipeline 2: Pose/IR → Blender VTuber animation.
+
+stages:
+  - id: ir_load
+    type: data
+    inputs: ["dance_ir.json"]
+    outputs: ["ir"]
+    description: Load canonical Dance IR.
+
+  - id: vtuber_anim
+    type: blender_vtuber
+    worker: video2storyboard:blender_vtuber
+    inputs: ["ir"]
+    outputs: ["animation_action", "vtuber_fbx"]
+
+steps:
+  - id: load_ir
+    type: ir_load
+    action: load_dance_ir
+  - id: animate
+    type: vtuber_anim
+    action: animate_vtuber
