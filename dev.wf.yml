@@ -1,0 +1,119 @@
+name: dev
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-contracts:
+    name: Validate YAML and JSON contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install validation tools
+        run: python -m pip install --upgrade pip pyyaml jsonschema
+
+      - name: Parse YAML configuration files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          paths = sorted(Path(".").rglob("*.yaml")) + sorted(Path(".").rglob("*.yml"))
+          paths = [
+              p for p in paths
+              if ".git" not in p.parts
+              and ".venv" not in p.parts
+              and "node_modules" not in p.parts
+          ]
+          errors = []
+          for path in paths:
+              try:
+                  with path.open(encoding="utf-8") as f:
+                      list(yaml.safe_load_all(f))
+                  print(f"OK {path}")
+              except Exception as exc:
+                  errors.append((path, exc))
+          if errors:
+              for path, exc in errors:
+                  print(f"ERROR {path}: {exc}")
+              raise SystemExit(1)
+          print(f"Validated {len(paths)} YAML files.")
+          PY
+
+  python-tests:
+    name: Run Python tests (when available)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          fi
+          python -m pip install pytest
+
+      - name: Run tests
+        env:
+          PYTHONPATH: src
+        run: |
+          if [ -d tests ] && find tests -type f \( -name 'test_*.py' -o -name '*_test.py' \) | grep -q .; then
+            python -m pytest -q
+          else
+            echo "No Python tests found; skipping pytest."
+          fi
+
+  browser-poc:
+    name: Check browser PoC assets (when available)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for package manifest
+        id: manifest
+        shell: bash
+        run: |
+          if [ -f package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No package.json yet; browser build check is deferred."
+          fi
+
+      - name: Set up Node
+        if: steps.manifest.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install and build browser assets
+        if: steps.manifest.outputs.exists == 'true'
+        run: |
+          npm ci
+          npm run build --if-present
