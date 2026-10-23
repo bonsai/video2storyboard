@@ -1,0 +1,28 @@
+schema_version: "1.0"
+feature: rainbow_pose_video_overlay
+input:
+  source_video: input.mp4
+  immutable: true
+output:
+  video_path: outputs/pose-rainbow.mp4
+  format: mp4
+  preserve_source_fps: true
+  preserve_source_dimensions: true
+  preserve_audio: true
+  audio_muxer: ffmpeg
+pose:
+  backend: mediapipe_pose
+  model_complexity: 0
+  visibility_threshold: 0.35
+  bone_palette: rainbow_hsv
+preview:
+  enabled: true
+  pose_toggle_key: p
+  quit_keys: [q, escape]
+  overlay_default: true
+optional:
+  gif_preview: false
+  transparent_svg_sequence: true
+validation:
+  never_overwrite_source: true
+  test_command: python -m pytest -q

@@ -89,6 +89,29 @@ providers:
     runtime: python
     package: mediapipe
     enabled: true
+  pose_rendering:
+    id: mediapipe_pose_overlay
+    runtime: python
+    entrypoint: video2storyboard.pose_render
+    enabled: true
+    local_only: true
+    offline:
+      enabled: true
+      output_dir: "{output_dir}/{run_id}/pose-overlays"
+      png_preview_over_source_frame: true
+      svg_skeleton_overlay: true
+      svg_background: transparent
+      attach_paths_to_pose_results: true
+      no_detection_policy: no_overlay_files
+      render_failure_policy: preserve_landmarks_and_record_overlay_error
+    live_preview:
+      enabled: true
+      command: "python -m video2storyboard.pose_render"
+      camera_index_default: 0
+      exit_keys:
+        - q
+        - ESC
+      requires_desktop_gui: true
   composition:
     id: opencv_measurements
     runtime: python

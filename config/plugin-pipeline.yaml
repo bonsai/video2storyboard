@@ -1,0 +1,27 @@
+schema_version: "1.0"
+orchestrator: langgraph
+description: "Starter pipeline; plugins are definitions/adapters, not implementations yet."
+data_contract:
+  canonical_storyboard: JSON
+  execution_records: JSONL
+plugins:
+  - id: ingest
+    enabled: true
+  - id: scene_detection
+    enabled: true
+  - id: keyframes
+    enabled: true
+  - id: pose
+    enabled: false
+  - id: composition
+    enabled: true
+  - id: vision
+    enabled: false
+  - id: speech
+    enabled: false
+  - id: storyboard
+    enabled: true
+  - id: export
+    enabled: true
+  - id: validation
+    enabled: true
