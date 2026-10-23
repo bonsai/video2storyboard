@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Any
 
 import cv2
+
+from .pose_tasks import get_tasks_pose, get_pose_connections, get_landmark_name
+
+
 def make_layer_image(
     frame_path: str | Path,
     output_dir: str | Path,
@@ -28,17 +32,18 @@ def make_layer_image(
     if image is None:
         return {"status": "error", "overlay_png": "", "overlay_svg": "", "error": f"Cannot decode frame: {source}"}
 
-    import mediapipe as mp
     from .pose_render import render_pose_artifacts
 
-    pose_api = mp.solutions.pose
+    pose_api = get_tasks_pose(static_image_mode=True, model_complexity=1,
+                              min_detection_confidence=0.5)
+    connections = list(get_pose_connections())
     try:
-        with pose_api.Pose(
-            static_image_mode=True,
-            model_complexity=1,
-            min_detection_confidence=0.5,
-        ) as pose:
-            result = pose.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        with pose_api as pose:
+            rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            import numpy as np
+            if not rgb.flags["C_CONTIGUOUS"]:
+                rgb = np.ascontiguousarray(rgb)
+            result = pose.process(rgb)
             if not result.pose_landmarks:
                 return {
                     "status": "not_detected",
@@ -50,7 +55,7 @@ def make_layer_image(
             landmarks = [
                 {
                     "index": i,
-                    "name": pose_api.PoseLandmark(i).name,
+                    "name": get_landmark_name(i),
                     "x": float(p.x),
                     "y": float(p.y),
                     "z": float(p.z),
@@ -59,7 +64,7 @@ def make_layer_image(
                 for i, p in enumerate(result.pose_landmarks.landmark)
             ]
             return render_pose_artifacts(
-                image, landmarks, pose_api.POSE_CONNECTIONS, out, frame_id
+                image, landmarks, connections, out, frame_id
             ) | {"status": "detected"}
     except Exception as exc:  # noqa: BLE001 - report worker error, keep going
         return {"status": "error", "overlay_png": "", "overlay_svg": "", "error": str(exc)}

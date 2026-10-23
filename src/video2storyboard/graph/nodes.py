@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .state import VideoState
+from ..pose_tasks import get_tasks_pose, get_pose_connections, get_landmark_name
 
 
 def _error(state: VideoState, worker: str, message: str) -> list[dict[str, Any]]:
@@ -96,10 +97,12 @@ def video2png(state: VideoState) -> VideoState:
 def eye_pose_mp(state: VideoState) -> VideoState:
     try:
         import cv2
-        import mediapipe as mp
+        import numpy as np
         results = []
-        pose_api = mp.solutions.pose
-        with pose_api.Pose(static_image_mode=True, model_complexity=1) as pose:
+        pose_api = get_tasks_pose(static_image_mode=True, model_complexity=1,
+                                  min_detection_confidence=0.5)
+        with pose_api as pose:
+            connections = list(get_pose_connections())
             for frame in state.get("frames", []):
                 image = cv2.imread(frame["image"])
                 if image is None:
@@ -107,10 +110,12 @@ def eye_pose_mp(state: VideoState) -> VideoState:
                                     "status": "unreadable_image", "landmarks": None})
                     continue
                 rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                if not rgb.flags["C_CONTIGUOUS"]:
+                    rgb = np.ascontiguousarray(rgb)
                 result = pose.process(rgb)
                 landmarks = None
                 if result.pose_landmarks:
-                    landmarks = [{"index": i, "name": pose_api.PoseLandmark(i).name,
+                    landmarks = [{"index": i, "name": get_landmark_name(i),
                                   "x": float(p.x), "y": float(p.y), "z": float(p.z),
                                   "visibility": float(p.visibility)}
                                  for i, p in enumerate(result.pose_landmarks.landmark)]
@@ -127,7 +132,7 @@ def eye_pose_mp(state: VideoState) -> VideoState:
                     try:
                         from ..pose_render import render_pose_artifacts
                         overlay_dir = Path(state.get("output_dir", "outputs")) / state.get("run_id", "run") / "pose-overlays"
-                        record.update(render_pose_artifacts(image, landmarks, pose_api.POSE_CONNECTIONS,
+                        record.update(render_pose_artifacts(image, landmarks, connections,
                                                             overlay_dir, frame["frame_id"]))
                         status = "overlay_written"
                     except Exception as render_exc:
