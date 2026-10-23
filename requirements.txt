@@ -1,6 +1,6 @@
 langgraph>=0.2.0
 opencv-python>=4.9  # GUI support for optional live webcam preview
-mediapipe>=0.10.14
+mediapipe>=1.1.1
 faster-whisper>=1.0.0
 jsonschema>=4.22
 pytest>=8.0
