@@ -4,9 +4,10 @@ from __future__ import annotations
 from langgraph.graph import END, START, StateGraph
 
 from .nodes import (
-    ear_stt_whisper, eye_composition_cv2, eye_meaning_vlm, eye_pose_mp,
+    ear_stt_whisper, eye_composition_cv2, eye_meaning_vlm,
     hand_storyboard_builder, ingest_video, paper_html_svg, validate_storyboard, video2png,
 )
+from .tasks_nodes import eye_pose_mp
 from .state import VideoState
 
 
