@@ -29,7 +29,6 @@ def render_pose_artifacts(
             continue
         points[int(item.get("index", len(points)))] = (round(x * (width - 1)), round(y * (height - 1)))
 
-    # Pose landmark order is the MediaPipe index order; callers include index explicitly.
     preview = image_bgr.copy()
     lines: list[str] = []
     for start, end in connections:
@@ -58,40 +57,42 @@ def render_pose_artifacts(
 
 
 def run_webcam(camera_index: int = 0, mirror: bool = True) -> None:
-    """Open a local webcam and render live MediaPipe pose landmarks with OpenCV."""
+    """Open a local webcam and render live pose landmarks using MediaPipe Tasks."""
     import cv2
-    import mediapipe as mp
+    from .pose_tasks import RunningMode, create_pose_landmarker, landmarks_to_records, mp, pose_connections
 
-    pose_api = mp.solutions.pose
-    drawing = mp.solutions.drawing_utils
     capture = cv2.VideoCapture(camera_index)
     if not capture.isOpened():
         raise RuntimeError(f"Could not open webcam index {camera_index}")
     try:
-        with pose_api.Pose(
-            static_image_mode=False,
-            model_complexity=0,
-            smooth_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        ) as pose:
+        with create_pose_landmarker(running_mode=RunningMode.VIDEO) as landmarker:
+            timestamp_ms = 0
             while True:
                 ok, frame = capture.read()
                 if not ok:
                     break
                 if mirror:
                     frame = cv2.flip(frame, 1)
-                result = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                result = landmarker.detect_for_video(mp_image, timestamp_ms)
+                timestamp_ms += 33
                 if result.pose_landmarks:
-                    drawing.draw_landmarks(
-                        frame, result.pose_landmarks, pose_api.POSE_CONNECTIONS,
-                        landmark_drawing_spec=drawing.DrawingSpec(
-                            color=(40, 80, 255), thickness=2, circle_radius=3
-                        ),
-                        connection_drawing_spec=drawing.DrawingSpec(
-                            color=(40, 220, 80), thickness=2
-                        ),
-                    )
+                    records = landmarks_to_records(result.pose_landmarks[0])
+                    render_pose_artifacts(frame, records, pose_connections(), Path.cwd() / ".pose-preview", "live")
+                    # Draw directly into the displayed frame; no files are needed for the preview.
+                    points = {
+                        int(item["index"]): (round(item["x"] * (frame.shape[1] - 1)),
+                                              round(item["y"] * (frame.shape[0] - 1)))
+                        for item in records
+                        if float(item.get("visibility", 1.0)) >= 0.35
+                        and 0 <= item["x"] <= 1 and 0 <= item["y"] <= 1
+                    }
+                    for start, end in pose_connections():
+                        if start in points and end in points:
+                            cv2.line(frame, points[start], points[end], (40, 220, 80), 2, cv2.LINE_AA)
+                    for point in points.values():
+                        cv2.circle(frame, point, 3, (40, 80, 255), -1, cv2.LINE_AA)
                 cv2.imshow("video2storyboard - MediaPipe Pose (press q to quit)", frame)
                 if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
                     break
