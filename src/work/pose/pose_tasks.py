@@ -1,64 +1,47 @@
-"""MediaPipe Tasks API wrapper for Pose Landmarker.
-
-Provides a drop-in replacement for the old `mp.solutions.pose` interface.
-Converts Tasks API output to the landmark format used by render_pose_artifacts.
-"""
+"""MediaPipe Tasks API wrapper compatible with the storyboard pose pipeline."""
 from __future__ import annotations
 
 import os
+import tempfile
+import urllib.request
 from pathlib import Path
 from typing import Any, Iterable
 
-from mediapipe.tasks.python.vision import PoseLandmarker, PoseLandmarkerOptions, PoseLandmarksConnections
+import numpy as np
 from mediapipe.tasks.python.core.base_options import BaseOptions
+from mediapipe.tasks.python.vision import (
+    PoseLandmarker,
+    PoseLandmarkerOptions,
+    PoseLandmarksConnections,
+    RunningMode,
+)
 from mediapipe.tasks.python.vision.core.image import Image, ImageFormat
 
+_MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
+    "pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
+)
+_MIN_MODEL_SIZE = 1_000_000
 
-# MediaPipe Pose landmark names (33 landmarks) — same as old mp.solutions.pose.PoseLandmark
 _POSE_LANDMARK_NAMES = [
-    "NOSE",
-    "LEFT_EYE_INNER",
-    "LEFT_EYE",
-    "LEFT_EYE_OUTER",
-    "RIGHT_EYE_INNER",
-    "RIGHT_EYE",
-    "RIGHT_EYE_OUTER",
-    "LEFT_EAR",
-    "RIGHT_EAR",
-    "MOUTH_LEFT",
-    "MOUTH_RIGHT",
-    "LEFT_SHOULDER",
-    "RIGHT_SHOULDER",
-    "LEFT_ELBOW",
-    "RIGHT_ELBOW",
-    "LEFT_WRIST",
-    "RIGHT_WRIST",
-    "LEFT_PINKY",
-    "RIGHT_PINKY",
-    "LEFT_INDEX",
-    "RIGHT_INDEX",
-    "LEFT_THUMB",
-    "RIGHT_THUMB",
-    "LEFT_HIP",
-    "RIGHT_HIP",
-    "LEFT_KNEE",
-    "RIGHT_KNEE",
-    "LEFT_ANKLE",
-    "RIGHT_ANKLE",
-    "LEFT_HEEL",
-    "RIGHT_HEEL",
-    "LEFT_FOOT_INDEX",
+    "NOSE", "LEFT_EYE_INNER", "LEFT_EYE", "LEFT_EYE_OUTER",
+    "RIGHT_EYE_INNER", "RIGHT_EYE", "RIGHT_EYE_OUTER", "LEFT_EAR",
+    "RIGHT_EAR", "MOUTH_LEFT", "MOUTH_RIGHT", "LEFT_SHOULDER",
+    "RIGHT_SHOULDER", "LEFT_ELBOW", "RIGHT_ELBOW", "LEFT_WRIST",
+    "RIGHT_WRIST", "LEFT_PINKY", "RIGHT_PINKY", "LEFT_INDEX",
+    "RIGHT_INDEX", "LEFT_THUMB", "RIGHT_THUMB", "LEFT_HIP",
+    "RIGHT_HIP", "LEFT_KNEE", "RIGHT_KNEE", "LEFT_ANKLE",
+    "RIGHT_ANKLE", "LEFT_HEEL", "RIGHT_HEEL", "LEFT_FOOT_INDEX",
     "RIGHT_FOOT_INDEX",
 ]
-
-# Pose connections from old API — 32 connections
 _POSE_CONNECTIONS = tuple(
-    (c.start, c.end) for c in PoseLandmarksConnections.POSE_LANDMARKS
+    (int(connection.start), int(connection.end))
+    for connection in PoseLandmarksConnections.POSE_LANDMARKS
 )
 
 
 class _TasksPose:
-    """Internal class wrapping the Tasks API PoseLandmarker."""
+    """Wrap Tasks API results in the legacy result shape expected by nodes."""
 
     def __init__(
         self,
@@ -69,63 +52,65 @@ class _TasksPose:
         min_tracking_confidence: float = 0.5,
     ):
         self._model_path = self._resolve_model_path()
-        running_mode = PoseLandmarkerOptions.running_mode.IMAGE
-        opts = PoseLandmarkerOptions(
+        options = PoseLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=self._model_path),
-            running_mode=running_mode,
+            running_mode=RunningMode.IMAGE,
             num_poses=1,
             min_pose_detection_confidence=min_detection_confidence,
+            min_tracking_confidence=min_tracking_confidence,
         )
-        self._landmarker = PoseLandmarker.create_from_options(opts)
+        self._landmarker = PoseLandmarker.create_from_options(options)
 
     @staticmethod
     def _resolve_model_path() -> str:
-        """Resolve the .task model path.
+        """Use a configured model, repository model, or download to user cache."""
+        configured = os.environ.get("VIDEO2STORYBOARD_POSE_MODEL")
+        if configured:
+            path = Path(configured).expanduser()
+            if not path.is_file():
+                raise FileNotFoundError(
+                    f"VIDEO2STORYBOARD_POSE_MODEL does not point to a file: {path}"
+                )
+            if path.stat().st_size < _MIN_MODEL_SIZE:
+                raise ValueError(f"Pose model file is too small or invalid: {path}")
+            return str(path.resolve())
 
-        Priority:
-        1. VIDEO2STORYBOARD_POSE_MODEL environment variable
-        2. models/pose_landmarker.task relative to this file's parent (repo root)
-        3. Fallback: download or raise
-        """
-        env = os.environ.get("VIDEO2STORYBOARD_POSE_MODEL")
-        if env and Path(env).is_file():
-            return str(Path(env).resolve())
+        repo_root = Path(__file__).resolve().parents[3]
+        local_model = repo_root / "models" / "pose_landmarker_lite.task"
+        if local_model.is_file() and local_model.stat().st_size >= _MIN_MODEL_SIZE:
+            return str(local_model.resolve())
 
-        # Default: repo_root/models/pose_landmarker.task
-        # __file__ is src/video2storyboard/work/pose/pose_tasks.py.
-        repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
-        default = repo_root / "models" / "pose_landmarker.task"
-        if default.is_file():
-            return str(default)
+        cache_dir = Path.home() / ".cache" / "video2storyboard" / "models"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cached_model = cache_dir / "pose_landmarker_lite.task"
+        if cached_model.is_file() and cached_model.stat().st_size >= _MIN_MODEL_SIZE:
+            return str(cached_model.resolve())
 
-        raise FileNotFoundError(
-            "Pose Landmarker model (.task) not found. "
-            "Set VIDEO2STORYBOARD_POSE_MODEL or place pose_landmarker.task at models/pose_landmarker.task"
+        fd, temporary_name = tempfile.mkstemp(
+            prefix="pose_landmarker_lite.", suffix=".download", dir=cache_dir
         )
+        os.close(fd)
+        temporary_path = Path(temporary_name)
+        try:
+            urllib.request.urlretrieve(_MODEL_URL, temporary_path)
+            if temporary_path.stat().st_size < _MIN_MODEL_SIZE:
+                raise RuntimeError("Downloaded MediaPipe pose model is unexpectedly small")
+            temporary_path.replace(cached_model)
+        except Exception:
+            temporary_path.unlink(missing_ok=True)
+            raise
+        return str(cached_model.resolve())
 
     def process(self, rgb_image: Any):
-        """Run pose detection on an RGB numpy array.
-
-        Returns an object compatible with old `mp.solutions.pose.Pose` process result:
-        - .pose_landmarks: list of NormalizedLandmark objects (or None)
-        """
-        # MediaPipe Tasks expects RGB, channels=3, contiguous
+        """Run pose detection on a contiguous RGB NumPy array."""
         if rgb_image is None:
             return _SimpleResult(None)
-
-        # Ensure correct format
-        img = rgb_image
-        if not img.flags["C_CONTIGUOUS"]:
-            img = np.ascontiguousarray(img)
-        mp_image = Image(image_format=ImageFormat.SRGB, data=img)
-        result = self._landmarker.detect(mp_image)
-        return _SimpleResult(result)
+        image = np.ascontiguousarray(rgb_image)
+        mp_image = Image(image_format=ImageFormat.SRGB, data=image)
+        return _SimpleResult(self._landmarker.detect(mp_image))
 
     def close(self):
-        try:
-            self._landmarker.close()
-        except Exception:
-            pass
+        self._landmarker.close()
 
     def __enter__(self):
         return self
@@ -136,7 +121,7 @@ class _TasksPose:
 
 
 class _SimpleResult:
-    """Mimic old mp.solutions.pose result: .pose_landmarks list or None."""
+    """Expose result.pose_landmarks.landmark for existing graph nodes."""
 
     def __init__(self, tasks_result):
         self.pose_landmarks = self._convert(tasks_result) if tasks_result else None
@@ -145,27 +130,22 @@ class _SimpleResult:
     def _convert(tasks_result):
         if not tasks_result.pose_landmarks:
             return None
-        # Tasks returns list of poses (each pose is list of 33 NormalizedLandmark)
-        # Old API returns a single NormalizedLandmarkList with .landmark attribute
-        # We return a list of landmark objects with .x, .y, .z, .visibility
-        pose = tasks_result.pose_landmarks[0]
         landmarks = []
-        for i, p in enumerate(pose):
-            # Create a simple object with required attributes
-            class L:
+        for point in tasks_result.pose_landmarks[0]:
+            class Landmark:
                 __slots__ = ("x", "y", "z", "visibility")
-            l = L()
-            l.x = float(p.x)
-            l.y = float(p.y)
-            l.z = float(p.z)
-            l.visibility = float(p.visibility)
-            landmarks.append(l)
-        # Wrap in a simple container with .landmark list
+            landmark = Landmark()
+            landmark.x = float(point.x)
+            landmark.y = float(point.y)
+            landmark.z = float(point.z)
+            landmark.visibility = float(point.visibility)
+            landmarks.append(landmark)
+
         class LandmarkList:
             __slots__ = ("landmark",)
-        lst = LandmarkList()
-        lst.landmark = landmarks
-        return lst
+        result = LandmarkList()
+        result.landmark = landmarks
+        return result
 
 
 def get_tasks_pose(
@@ -175,7 +155,7 @@ def get_tasks_pose(
     min_detection_confidence: float = 0.5,
     min_tracking_confidence: float = 0.5,
 ) -> _TasksPose:
-    """Factory function mimicking mp.solutions.pose.Pose()"""
+    """Factory with the legacy constructor signature."""
     return _TasksPose(
         static_image_mode=static_image_mode,
         model_complexity=model_complexity,
@@ -185,21 +165,13 @@ def get_tasks_pose(
     )
 
 
-# Re-export connections for rendering
 def get_pose_connections() -> Iterable[tuple[int, int]]:
-    """Return POSE_CONNECTIONS compatible with old mp.solutions.pose.POSE_CONNECTIONS"""
+    """Return integer landmark connection pairs."""
     return _POSE_CONNECTIONS
 
 
 def get_landmark_name(index: int) -> str:
-    """Return landmark name by index (0-32)"""
+    """Return landmark name by index (0-32)."""
     if 0 <= index < len(_POSE_LANDMARK_NAMES):
         return _POSE_LANDMARK_NAMES[index]
     return f"LANDMARK_{index}"
-
-
-# Import numpy lazily
-try:
-    import numpy as np
-except Exception:
-    pass
