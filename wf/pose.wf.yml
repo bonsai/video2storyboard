@@ -1,0 +1,37 @@
+schema_version: "1.0"
+id: pose-overlay
+purpose: "Render a visible MediaPipe Pose skeleton over source frames."
+status: scaffold
+scope:
+  include: [read_frame, estimate_pose, render_overlay, validate_artifact]
+  exclude: [vlm, stt, audio_analysis, 3d_retargeting, dance_reconstruction]
+topology:
+  entry: read_frame
+  exit: validate_artifact
+  nodes:
+    - {id: read_frame, owner: cv2}
+    - {id: estimate_pose, owner: mediapipe_pose}
+    - {id: render_overlay, owner: pose_renderer}
+    - {id: validate_artifact, owner: verifier}
+  edges:
+    - [read_frame, estimate_pose]
+    - [estimate_pose, render_overlay]
+    - [render_overlay, validate_artifact]
+contracts:
+  input: openapi/pose.yaml#/components/schemas/PoseRequest
+  output: openapi/pose.yaml#/components/schemas/PoseResponse
+  artifact_schema: contracts/pose-artifact.schema.json
+execution:
+  source_immutable: true
+  local_only: true
+  cloud_fallback: false
+  default_output_dir: artifacts/pose
+  log_format: jsonl
+acceptance:
+  - "A valid input frame produces a pose overlay PNG."
+  - "A matching JSON file records frame ID, source timestamp, image dimensions, landmarks, and status."
+  - "No-pose is represented as a valid explicit status, not a crash."
+  - "The source image is never overwritten."
+  - "Tests and artifact checks pass."
+next:
+  tomorrow: "Use timestamped pose JSON sequences to reconstruct dance motion."
