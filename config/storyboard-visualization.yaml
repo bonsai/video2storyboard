@@ -1,18 +1,18 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 project:
   id: storyboard_visual_reconstruction
   status: specification
   goal: "Reconstruct the visual content of storyboard panels from source frames."
   canonical_definition: "config/storyboard-visualization.yaml"
-  requirement: "Every development change must include an inspectable visualization and a shareable artifact or explicit reason it cannot be shared."
+  requirement: "Every development change must include inspectable visualization and a shareable artifact, or an explicit blocker."
 
 scope:
   focus: storyboard_image_reconstruction
   include:
     - "Reconstruct storyboard panel imagery from source frames and structured observations."
-    - "Visualize source frame, detected pose, CV2 measurements, VLM description, and reconstructed panel together for review."
-    - "Share generated visual artifacts through repository-tracked files and a human-readable MAP."
+    - "Review source frame, pose, CV2 measurements, VLM description, and reconstructed panel together."
+    - "Share generated artifacts and a human-readable MAP."
   exclude:
     - audio_and_speech_transcription
     - full_video_understanding_beyond_panel_reconstruction
@@ -44,54 +44,107 @@ workers:
     - unrelated_semantic_workers
     - 3d_retargeting
 
-workflow:
-  orchestration:
-    engine: langgraph
-    development_itself_is_orchestrated: true
-    manual_llm_step_by_step_direction: false
-    yaml_is_source_of_truth: true
-  stages:
-    - id: inspect
-      purpose: "Inspect repository, current code, existing artifacts, and related Issues before changes."
-    - id: survey
-      purpose: "Survey existing libraries/projects before implementing custom code."
-      required: true
-    - id: define_contracts
-      purpose: "Define inputs, outputs, schema, visual evidence, and acceptance checks in YAML."
-    - id: implement_small_unit
-      purpose: "Implement one independently testable stage."
-    - id: test
-      purpose: "Run targeted tests and validate generated data and images."
-    - id: visualize
-      purpose: "Generate diagrams/previews from actual code and current run artifacts."
-      required: true
-    - id: share
-      purpose: "Save shareable .puml/.svg/.png/html and MAP.md artifacts in the repository."
-      required: true
-    - id: review
-      purpose: "Report artifact links, test evidence, failures, and unresolved risks."
-  retry:
-    max_attempts: 2
-    on_failure: "capture_error_then_diagnose_then_retry_or_stop"
-  approval:
-    require_human_for:
-      - destructive_changes
-      - credential_or_permission_changes
-      - publishing_outside_repository
-      - merge_or_release
+development:
+  orchestrator: langgraph
+  yaml_is_source_of_truth: true
+  separation_of_duties:
+    - role: coordinator
+      owns: [request_normalization, routing, run_state, final_report]
+      may_edit_code: false
+    - role: repository_survey
+      owns: [repository_inspection, dependency_inspection, library_survey, evidence]
+      may_edit_code: false
+    - role: designer
+      owns: [contracts, schemas, architecture, acceptance_criteria]
+      may_edit_code: false
+    - role: implementer
+      owns: [one_bounded_implementation_unit]
+      may_approve_own_plan: false
+    - role: verifier
+      owns: [tests, schema_checks, artifact_checks, failure_diagnosis]
+      may_approve_own_changes: false
+    - role: visualizer
+      owns: [code_diagrams, graph_topology, worker_map, storyboard_review]
+      may_edit_production_code: false
+    - role: publisher
+      owns: [artifact_packaging, MAP, repository_links]
+      may_edit_production_code: false
+    - role: human
+      owns: [risk_approval, external_publication_approval, merge_release_review]
 
-source:
-  timeline_file: "timelines.yaml"
-  segment_id: skeleton_dance
-  interval:
-    start: "00:02:20"
-    end: "00:03:45"
-    start_inclusive: true
-    end_inclusive: false
-  preserve_source_timestamps: true
-  local_only: true
-  cloud_fallback: false
-  upload_source_media: false
+topology:
+  type: directed_graph
+  entry: request_normalize
+  exit: publish_report
+  nodes:
+    - {id: request_normalize, owner: coordinator}
+    - {id: inspect_repository, owner: repository_survey}
+    - {id: survey_reuse, owner: repository_survey}
+    - {id: define_contracts, owner: designer}
+    - {id: approval_gate, owner: human}
+    - {id: implement_unit, owner: implementer}
+    - {id: run_tests, owner: verifier}
+    - {id: diagnose_failure, owner: verifier}
+    - {id: generate_visuals, owner: visualizer}
+    - {id: package_share, owner: publisher}
+    - {id: publish_report, owner: coordinator}
+    - {id: blocked_report, owner: coordinator}
+  edges:
+    - [request_normalize, inspect_repository]
+    - [inspect_repository, survey_reuse]
+    - [survey_reuse, define_contracts]
+    - [define_contracts, approval_gate]
+    - [approval_gate, implement_unit]
+    - [approval_gate, blocked_report]
+    - [implement_unit, run_tests]
+    - [run_tests, generate_visuals]
+    - [run_tests, diagnose_failure]
+    - [diagnose_failure, implement_unit]
+    - [diagnose_failure, blocked_report]
+    - [generate_visuals, package_share]
+    - [generate_visuals, blocked_report]
+    - [package_share, publish_report]
+  conditional_edges:
+    - {from: approval_gate, condition: approved, true: implement_unit, false: blocked_report}
+    - {from: run_tests, condition: all_required_checks_pass, true: generate_visuals, false: diagnose_failure}
+    - {from: diagnose_failure, condition: retry_budget_available, true: implement_unit, false: blocked_report}
+    - {from: generate_visuals, condition: required_artifacts_valid, true: package_share, false: blocked_report}
+  invariant: "Runtime graph must match this declared topology or fail validation."
+
+tools:
+  reuse_policy:
+    survey_before_custom_implementation: true
+    inspect_repository_before_install: true
+    prefer_existing_cli_library_mcp_or_runner: true
+    avoid_duplicate_implementation: true
+    record_version_command_license_and_limitations: true
+  local_resource_policy:
+    avoid_heavy_local_installation: true
+    prefer_existing_environment_or_reusable_runner: true
+    remote_execution_requires_explicit_approval: true
+    source_media_must_not_be_uploaded: true
+  integrations:
+    - id: py2puml
+      purpose: "Python class/data relationship diagrams where supported."
+      stage: generate_visuals
+      invocation: "py2puml <python_package_path> <package_root>"
+      output: "artifacts/uml/python-structure.puml"
+      limitations: "Does not represent LangGraph edges or function-only worker execution completely."
+    - id: plantuml_renderer
+      purpose: "Render .puml to SVG when renderer is available."
+      stage: generate_visuals
+      preferred_execution: reusable_runner_or_existing_dev_environment
+      output: "artifacts/uml/*.svg"
+      fallback: "Keep .puml source and report SVG rendering as blocked."
+    - id: langgraph_topology_export
+      purpose: "Export actual LangGraph nodes and edges."
+      stage: generate_visuals
+      source: "compiled graph or graph definition"
+      output: "artifacts/uml/langgraph-topology.puml"
+    - id: storyboard_review
+      purpose: "Build HTML/SVG review panel from source frame and MP/CV2/VLM outputs."
+      stage: generate_visuals
+      output: "artifacts/visualization/storyboard-review.html"
 
 contracts:
   interchange: json
@@ -106,35 +159,52 @@ contracts:
     - separate_image_coordinates_from_3d_world_coordinates
     - reconstructed_panel_references_source_frame_and_evidence
 
+source:
+  timeline_file: "timelines.yaml"
+  segment_id: skeleton_dance
+  interval:
+    start: "00:02:20"
+    end: "00:03:45"
+    start_inclusive: true
+    end_inclusive: false
+  preserve_source_timestamps: true
+  local_only: true
+  cloud_fallback: false
+  upload_source_media: false
+
 visualization:
   mandatory_for_development: true
   generated_from:
     - actual_python_code
     - actual_langgraph_topology
-    - actual_plugin_contracts
+    - actual_mp_cv2_vlm_worker_contracts
     - actual_run_artifacts
   artifacts:
-    - path: "artifacts/uml/langgraph.puml"
-      purpose: "Class/data structure view where py2puml supports it."
-    - path: "artifacts/uml/langgraph-flow.puml"
-      purpose: "Actual LangGraph node and edge topology."
-    - path: "artifacts/uml/plugin-workers.puml"
-      purpose: "MP, CV2, and VLM plugin contract/callable mapping."
-    - path: "artifacts/visualization/storyboard-review.html"
-      purpose: "Review source frames, observations, and reconstructed storyboard panels."
-    - path: "artifacts/visualization/MAP.md"
-      purpose: "Human-readable navigation and regeneration instructions."
+    - {path: "artifacts/uml/python-structure.puml", purpose: "py2puml-supported class/data structure"}
+    - {path: "artifacts/uml/langgraph-topology.puml", purpose: "actual graph node/edge topology"}
+    - {path: "artifacts/uml/worker-contracts.puml", purpose: "MP/CV2/VLM contract and callable mapping"}
+    - {path: "artifacts/visualization/storyboard-review.html", purpose: "source, evidence, and reconstructed panel review"}
+    - {path: "artifacts/visualization/MAP.md", purpose: "navigation, ownership, limitations, regeneration"}
   policy:
-    - "Generated diagrams must not be presented as py2puml output if created by another method."
+    - "Generated diagrams must not be mislabeled as py2puml output."
     - "Do not infer unsupported function-level relationships from class diagrams."
-    - "Share links to repository artifacts in the completion report."
-    - "A missing artifact must be marked blocked, never silently omitted."
+    - "Share repository links to artifacts in each completion report."
+    - "Missing required artifacts block completion."
 
-acceptance:
-  - "Only MP, CV2, and VLM workers are in the active visual reconstruction path."
-  - "The selected interval includes 00:02:20 and excludes 00:03:45."
-  - "Each processing stage has a defined YAML contract and independently testable input/output."
-  - "The reconstructed storyboard image can be reviewed alongside its source frame and evidence."
-  - "Code/graph/worker structure diagrams and a human-readable MAP are generated and shared."
-  - "Tests and artifact validation run before reporting completion."
+quality_gates:
+  - "Only MP, CV2, and VLM workers are active in the reconstruction path."
+  - "00:02:20 is included and 00:03:45 is excluded."
+  - "Runtime loads/validates this YAML and verifies graph topology against it."
+  - "Each stage has independently testable inputs and outputs."
+  - "Source frame, observations, and reconstructed panel are reviewable together."
+  - "Diagrams are generated from actual source/runtime outputs."
+  - "Tests and artifact checks pass before completion is reported."
   - "No source media is uploaded by default."
+
+safety:
+  max_repair_attempts: 2
+  human_approval_required_for:
+    - destructive_changes
+    - credential_or_permission_changes
+    - external_publication
+    - merge_or_release
