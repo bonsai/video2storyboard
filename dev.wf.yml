@@ -1,16 +1,30 @@
-schema_version: "1.0"
+schema_version: "1.1"
 
 workflow:
   id: dev
-  name: Standalone dance pipeline development
+  name: YAML-first storyboard visual reconstruction development
   status: specification
+  canonical_definition: "config/storyboard-visualization.yaml"
   purpose: >
-    Develop and verify the video-to-pose and pose-to-character pipelines
-    independently before adding LangGraph orchestration.
+    Orchestrate development itself with LangGraph. Visualization and shareable
+    artifacts are required outputs of development, not optional documentation.
   orchestration:
-    engine: manual
-    langgraph: deferred
-    rule: "Each step must be runnable and testable on its own."
+    engine: langgraph
+    development_itself_is_orchestrated: true
+    manual_llm_step_by_step_direction: false
+    rule: "Inspect, survey, implement one small unit, test, visualize, share, report."
+
+scope:
+  focus: storyboard_image_reconstruction
+  workers:
+    - mp_pose
+    - cv2
+    - vlm
+  excluded:
+    - stt
+    - audio_analysis
+    - 3d_character_retargeting
+    - unrelated_workers
 
 defaults:
   execution: local
@@ -20,9 +34,9 @@ defaults:
   survey_before_custom_implementation: true
   allow_polyglot: true
   interchange_format: json
+  execution_log_format: jsonl
 
 source:
-  video_url: "https://www.youtube.com/watch?v=U6dnieqgYvI"
   timeline_file: "timelines.yaml"
   segment_id: skeleton_dance
   interval:
@@ -32,159 +46,81 @@ source:
     end_inclusive: false
   preserve_source_timestamps: true
 
-pipelines:
-  - id: source_pose_overlay
-    name: Source video to pose JSON and browser overlay
-    steps:
-      - id: survey_media_tools
-        action: survey
-        purpose: "Compare existing video/frame extraction, pose, JSON validation, SVG, and browser tooling."
-        outputs:
-          - "survey/pylib.md"
-        gate:
-          require_sources_and_tradeoffs: true
-          do_not_implement_plugin_before_survey: true
+development_stages:
+  - id: inspect
+    action: repository_inspection
+    required: true
+  - id: survey
+    action: survey_existing_libraries_and_projects
+    required: true
+    before_custom_implementation: true
+  - id: define_contracts
+    action: load_and_validate_yaml_contracts
+    required: true
+  - id: implement
+    action: implement_small_testable_unit
+    required: true
+  - id: test
+    action: run_tests_and_validate_artifacts
+    required: true
+  - id: visualize
+    action: generate_visualization_from_actual_code_and_outputs
+    required: true
+  - id: share
+    action: save_artifacts_and_update_map
+    required: true
+  - id: report
+    action: report_evidence_failures_blockers_and_links
+    required: true
 
-      - id: extract_stills
-        action: extract_frames
-        input: source.video_url
-        output:
-          directory: "outputs/dev/frames"
-          format: png
-          include:
-            - frame_id
-            - source_timestamp
-        constraints:
-          - "Use only frames in source.interval."
-          - "Include the start boundary and exclude the end boundary."
-
-      - id: estimate_pose
-        action: pose_estimation
-        implementation:
-          preferred_existing_project: MediaPipe
-          language: python
-          language_is_mandatory: false
-        input:
-          format: png
-          directory: "outputs/dev/frames"
-        output:
-          format: json
-          path: "outputs/dev/pose.json"
-          schema: "schemas/pose.schema.json"
-        constraints:
-          - "Infer from still PNG files, not a direct video stream."
-          - "Retain source timestamp and frame ID."
-          - "Record no-pose and processing-error states explicitly."
-
-      - id: render_pose_svg
-        action: render
-        input: "outputs/dev/pose.json"
-        output:
-          format: svg
-          directory: "outputs/dev/overlays"
-        constraints:
-          - "Render from JSON; do not rerun pose inference."
-          - "Document coordinate convention and image dimensions."
-
-      - id: browser_overlay
-        action: browser_composite
-        input:
-          frames: "outputs/dev/frames"
-          overlays: "outputs/dev/overlays"
-        output:
-          directory: "outputs/dev/composite"
-          format: png
-        acceptance:
-          - "Overlay is aligned to the matching source frame."
-          - "Video time and overlay time remain synchronized."
-
-      - id: assemble_animation
-        action: assemble_video
-        enabled: false
-        input: "outputs/dev/composite"
-        output:
-          path: "outputs/dev/dance-overlay.mp4"
-          format: mp4
-        enable_when:
-          - "Browser overlay has been visually verified."
-          - "Frame ordering and timestamp alignment tests pass."
-
-  - id: character_retargeting
-    name: Dance JSON to a different 3D character
-    depends_on:
-      - source_pose_overlay.estimate_pose
-    status: planned
-    steps:
-      - id: survey_free_character_models
-        action: survey
-        outputs:
-          - "survey/character-models.md"
-        compare:
-          - license_and_attribution
-          - redistribution_rights
-          - rig_and_skeleton
-          - file_format
-          - retargeting_compatibility
-          - local_rendering_support
-        gate:
-          verify_license_before_use: true
-          prefer_existing_free_model: true
-
-      - id: retarget_motion
-        action: retarget
-        input: "outputs/dev/pose.json"
-        model_manifest: "config/character-model.yaml"
-        output:
-          path: "outputs/dev/character-animation"
-        constraints:
-          - "Map pose landmarks to the target rig explicitly."
-          - "Keep source and target coordinate systems distinct."
-          - "Start with a short reproducible sample."
-
-      - id: render_character
-        action: render
-        enabled: false
-        input: "outputs/dev/character-animation"
-        output:
-          path: "outputs/dev/character-dance.mp4"
-          format: mp4
-        enable_when:
-          - "A license-verified model has been selected."
-          - "Retargeting is validated on a short clip."
+visualization:
+  mandatory: true
+  specification: "config/storyboard-visualization.yaml"
+  artifacts_root: "artifacts/"
+  required_kinds:
+    - class_and_data_structure_diagram
+    - actual_langgraph_topology_diagram
+    - mp_cv2_vlm_worker_contract_diagram
+    - storyboard_reconstruction_review
+    - human_readable_map
+  policy:
+    - "Use py2puml for supported Python class/data relationships."
+    - "Do not claim py2puml represents LangGraph edges or function-only workers completely."
+    - "Generate separate diagrams from actual graph topology and worker contracts."
+    - "Include repository links to the artifacts in every completion report."
+    - "If required visualization cannot be generated, mark the run blocked."
 
 quality_gates:
-  - id: json_contract
+  - id: scope
     checks:
-      - "Versioned JSON schema exists and validates output."
-      - "Source timestamp, frame ID, dimensions, and coordinate convention are present."
-      - "Image coordinates and 3D world coordinates are not mixed."
-      - "No-pose and error states are represented."
-
-  - id: timeline_boundaries
+      - "Active visual reconstruction path uses MP, CV2, and VLM only."
+      - "Audio/STT and 3D retargeting are excluded."
+  - id: timeline
     checks:
       - "00:02:20 is included."
       - "00:03:45 is excluded."
-      - "Frames outside the selected segment never reach pose inference."
-
-  - id: tests
+      - "Out-of-segment frames never reach reconstruction workers."
+  - id: contracts
     checks:
-      - "Valid pose result"
-      - "No pose detected"
-      - "Unreadable PNG"
-      - "Missing timeline configuration fails closed"
-      - "SVG alignment and frame ordering"
-
-  - id: implementation_policy
+      - "YAML definitions load and validate."
+      - "JSON outputs preserve frame ID, source timestamp, dimensions, and coordinate convention."
+      - "No-pose, unreadable-image, and worker-error states are explicit."
+  - id: visual_evidence
     checks:
-      - "Survey existing libraries/projects before custom implementation."
-      - "Rust or other languages may be selected if evidence supports the choice."
-      - "New dependencies and custom code require documented justification."
-      - "This YAML is a specification; runtime enforcement requires implementation and tests."
+      - "Source frame, observations, and reconstructed panel can be reviewed together."
+      - "Diagrams are generated from actual source or run artifacts."
+      - "artifacts/uml/MAP.md or artifacts/visualization/MAP.md explains scope and regeneration."
+  - id: verification
+    checks:
+      - "Tests are run and actual outcomes are recorded."
+      - "A missing required artifact blocks completion."
+      - "Retry loop is bounded."
+      - "No source media is uploaded by default."
 
-later:
-  langgraph:
-    enabled: false
-    enable_when:
-      - "Pipeline 1 stages have stable contracts and repeatable tests."
-      - "Pipeline 2 has a license-verified model and a validated short-clip result."
-    integration_rule: "Wrap proven standalone steps as nodes; do not redesign the steps solely for orchestration."
+safety:
+  max_repair_attempts: 2
+  human_approval_required_for:
+    - destructive_changes
+    - credential_or_permission_changes
+    - external_publication
+    - merge_or_release
