@@ -30,3 +30,13 @@ python manga_cam.py --buildings      # 建物ブーストON
 ```
 
 キー: q=終了 / p=骨格 / b=建物 / t=トーン / s=フレーム保存
+
+## 描画専用 JAR: pose-renderer
+
+役割分担の実物。検出（MediaPipe / Python）とはファイルだけでつながる描画実行ファイル。
+
+- 入力: video2poses 契約の poses-*.jsonl（1行 = 1フレーム×1人、nodes に正規化座標）
+- 出力: 手書き調モノクロ骨格の PNG 連番（紙テクスチャ＋震え＋重ね描き）
+- ビルド: `javac -d classes PoseRenderer.java && jar --create --file pose-renderer.jar --main-class PoseRenderer -C classes .`
+- 実行: `java -jar pose-renderer.jar --in poses.jsonl --out frames/ [--w 1280 --h 720 --wobble 2.0 --passes 3]`
+- 依存: Java 標準ライブラリのみ（外部ライブラリなし）
