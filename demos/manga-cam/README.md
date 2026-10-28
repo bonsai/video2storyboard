@@ -40,3 +40,12 @@ python manga_cam.py --buildings      # 建物ブーストON
 - ビルド: `javac -d classes PoseRenderer.java && jar --create --file pose-renderer.jar --main-class PoseRenderer -C classes .`
 - 実行: `java -jar pose-renderer.jar --in poses.jsonl --out frames/ [--w 1280 --h 720 --wobble 2.0 --passes 3]`
 - 依存: Java 標準ライブラリのみ（外部ライブラリなし）
+
+## Processing 版とローカル表示
+
+- `processing/PoseRendererP5/PoseRendererP5.pde` — JAR と同じ契約を読む Processing スケッチ（再生つき）
+- `view-local.ps1` — Windows 用: 両リポを clone/pull し、poses を data/ に置いて、そのまま実行/起動する
+
+```
+.\view-local.ps1
+```
