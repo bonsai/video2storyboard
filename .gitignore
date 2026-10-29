@@ -5,3 +5,4 @@ __pycache__/
 outputs/
 .env
 *.pyc
+mcp-servers/server/node_modules/
